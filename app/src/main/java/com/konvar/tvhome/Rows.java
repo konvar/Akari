@@ -438,9 +438,10 @@ final class Rows {
                     CardAdapter a = (CardAdapter) h.getBindingAdapter();
                     int p = h.getBindingAdapterPosition();
                     Object now = a != null && p != RecyclerView.NO_POSITION && p < a.row.items.size() ? a.row.items.get(p) : null;
+                    // The card has since been reused for something else (a Continue Watching card with its own
+                    // "24m left" badge, say): stop quietly, without touching a badge that is no longer ours.
                     if (!(now instanceof Catalog.Item) || !"upcoming".equals(((Catalog.Item) now).kind)
                             || ((Catalog.Item) now).order != -airs || h.countdown.getTag() != this) {
-                        h.countdown.setVisibility(View.GONE);
                         return;
                     }
                     long left = airs - System.currentTimeMillis();
