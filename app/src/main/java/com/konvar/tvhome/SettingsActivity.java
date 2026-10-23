@@ -282,7 +282,36 @@ public class SettingsActivity extends Activity {
         }
         addStartCard();
         addCountdownCard();
+        addTrailerCard();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
+    }
+
+    /** The muted trailer behind the hero (IMDb, else YouTube), off by default. */
+    private void addTrailerCard() {
+        boolean on = HeroTrailer.enabled(this), sound = HeroTrailer.sound(this);
+        int delay = HeroTrailer.delaySeconds(this);
+        String sub = !on ? "Off  ·  press to turn on"
+                : (sound ? "With sound" : "Muted") + ", after " + delay + " s on a title  ·  Wi-Fi or Ethernet  ·  press to change";
+        card("Trailer behind the hero", sub, toggle(on), v -> {
+            java.util.List<String> modes = java.util.Arrays.asList("Off", "Muted", "With sound");
+            String now = !on ? "Off" : sound ? "With sound" : "Muted";
+            Picker.single(this, "Trailer behind the hero", modes, now, chosen -> {
+                String m = chosen.iterator().next();
+                if ("Off".equals(m)) {
+                    HeroTrailer.set(this, false, sound, delay);
+                    showSection(0);
+                    content.getChildAt(2).requestFocus();
+                    return;
+                }
+                boolean withSound = "With sound".equals(m);
+                java.util.List<String> delays = java.util.Arrays.asList("2 seconds", "3 seconds", "4 seconds", "6 seconds", "8 seconds", "10 seconds");
+                Picker.single(this, "Start after", delays, delay + " seconds", d -> {
+                    HeroTrailer.set(this, true, withSound, Integer.parseInt(d.iterator().next().split(" ")[0]));
+                    showSection(0);
+                    content.getChildAt(2).requestFocus();
+                });
+            });
+        });
     }
 
     private String startTitle() {
@@ -397,9 +426,10 @@ public class SettingsActivity extends Activity {
         content.removeAllViews();
         addStartCard();
         addCountdownCard();
+        addTrailerCard();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
-        // Children 0 and 1 are the start-row and countdown cards; row cards follow them.
-        View v = content.getChildAt(Math.max(0, Math.min(focus + 2, content.getChildCount() - 1)));
+        // Children 0-2 are the start-row, countdown and trailer cards; row cards follow them.
+        View v = content.getChildAt(Math.max(0, Math.min(focus + 3, content.getChildCount() - 1)));
         if (v != null) v.requestFocus();
     }
 

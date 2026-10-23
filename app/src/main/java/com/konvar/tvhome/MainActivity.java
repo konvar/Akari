@@ -58,6 +58,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     private TextView heroMeta;
     private TextView heroDescription;
     private Synopsis heroSynopsis;
+    private HeroTrailer heroTrailer;
 
     private List<Apps.Entry> apps = new ArrayList<>();
     private final List<Rows.Row> contentRows = new ArrayList<>();
@@ -113,6 +114,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         heroMeta = findViewById(R.id.heroMeta);
         heroDescription = findViewById(R.id.heroDescription);
         heroSynopsis = new Synopsis(heroDescription, 4);
+        heroTrailer = new HeroTrailer((android.widget.FrameLayout) heroImage.getParent());
 
         rowList = findViewById(R.id.rows);
         LinearLayoutManager lm = new LinearLayoutManager(this) {
@@ -228,6 +230,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     @Override
     protected void onPause() {
         super.onPause();
+        heroTrailer.focus(null);
         leftRowTitle = userMoved ? lastRowTitle : null;
         leftItemKey = lastItemKey;
         if (leftRowTitle != null) {
@@ -765,6 +768,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         if (item instanceof Catalog.Item && ("list".equals(((Catalog.Item) item).type)
                 || "more".equals(((Catalog.Item) item).type))) {
             // Lists and "Show more" have no artwork: just their name and line in the hero.
+            heroTrailer.focus(null);
             Catalog.Item it = (Catalog.Item) item;
             heroInfo.setVisibility(View.VISIBLE);
             heroLogo.setVisibility(View.GONE);
@@ -807,6 +811,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             heroDescription.setText(it.description);
             heroSynopsis.restart();
             loadHeroRatings(it);
+            heroTrailer.focus(it);
             if (it.cert == null && it.id != null && it.id.startsWith("tt") && Tmdb.configured()) {
                 Net.IO.execute(() -> {
                     String cert = Tmdb.certification(it.id, !"series".equals(it.type));
@@ -846,6 +851,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             }
         } else if (item instanceof Apps.Entry) {
             Apps.Entry e = (Apps.Entry) item;
+            heroTrailer.focus(null);
             // Apps get no hero, so the row sits right under the top bar instead of below an empty block.
             heroInfo.setVisibility(View.GONE);
             heroImage.animate().alpha(0f).setDuration(200).start();

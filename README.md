@@ -41,6 +41,9 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - Clock and weather (automatic location or a town you choose); both can be hidden.
 - The buttons in the top bar adapt to the picture behind them, so they stay readable on bright artwork.
 - Everything next to the focused card is fetched ahead, so artwork, logos and ratings appear instantly.
+- Optional trailer behind the hero: after a few seconds on a title (2-10 s, your choice), its trailer plays muted or
+  with sound, blended into the page like the backdrop. IMDb's own trailer first (no ads, no extra player); YouTube as a
+  backup, shown only once the trailer itself plays. Neighbouring trailers are looked up ahead; Wi-Fi or Ethernet only.
 
 **OK and hold OK**
 - OK on a movie or show opens its page; Continue Watching and Upcoming cards resume or play.
@@ -101,7 +104,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.1.6.apk
+   adb install Akari-0.1.7.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does
@@ -137,7 +140,8 @@ Open **Settings** (the gear at the top right of Home).
      - Simkl: [simkl.com/settings/developer](https://simkl.com/settings/developer). Enter the Client ID.
 2. **Tracking.** Choose where Continue Watching and the checkmarks come from, and sign in with the code shown on screen.
 3. **Playback.** Pick the player app, the trailer app, and the remote buttons.
-4. **Home rows.** Show, hide and reorder the rows (hold OK to move one), and pick the row focused when the TV starts.
+4. **Home rows.** Show, hide and reorder the rows (hold OK to move one), pick the row focused when the TV starts, and
+   turn on the trailer behind the hero (muted or with sound, and after how many seconds).
 
 ## Remote buttons and voice
 
@@ -182,7 +186,6 @@ Releases are built by GitHub Actions when a `v*` tag is pushed (`.github/workflo
 
 - **More player apps.** Nuvio, Stremio, Wuplay and STRMR work today. Other apps that open movies and shows by IMDb or
   TMDB id can be added the same way.
-- Trailers playing muted behind the hero.
 - More rows from TMDB: recommendations, collections, networks and streaming services.
 
 ## Credits

@@ -48,6 +48,7 @@ final class Prefetch {
             ImageLoader.preload(app, it.background, heroW(app), heroH(app), false);
             ImageLoader.preload(app, it.logo, logoW(app), logoH(app), true);
             if (d == 1) DetailsPrefetch.get(app, it);
+            HeroTrailer.prefetch(app, it);
             String key = it.type + ":" + it.id;
             if (!DONE.add(key)) continue;
             boolean movie = !"series".equals(it.type);
