@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pill option: lit white on focus, tonal blue with a check when ticked, quiet glass otherwise. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFF5F7FA" />
+            <corners android:radius="100dp" />
+        </shape>
+    </item>
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#5C8AB4F8" />
+            <stroke android:width="1dp" android:color="#998AB4F8" />
+            <corners android:radius="100dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#14FFFFFF" />
+            <stroke android:width="1dp" android:color="#1FFFFFFF" />
+            <corners android:radius="100dp" />
+        </shape>
+    </item>
+</selector>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A user-made Trakt list: its name, author and size on a glass tile. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="180dp"
+    android:layout_height="150dp"
+    android:layout_marginEnd="14dp"
+    android:background="@drawable/glass_tile"
+    android:foreground="@drawable/card_focus"
+    android:focusable="true"
+    android:clickable="true">
+
+    <ImageView
+        android:id="@+id/cardImage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="☰"
+            android:textColor="#99FFFFFF"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/cardLabel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="6dp"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textColor="#FFFFFFFF"
+            android:textSize="15sp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 500" />
+
+        <TextView
+            android:id="@+id/cardSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="#B3FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="@font/outfit" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A season tile: "Season 2", how much is watched, a check when all of it is. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="150dp"
+    android:layout_height="64dp"
+    android:layout_marginEnd="12dp"
+    android:background="@drawable/glass_tile"
+    android:foreground="@drawable/card_focus"
+    android:focusable="true"
+    android:clickable="true">
+
+    <ImageView
+        android:id="@+id/cardImage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="34dp">
+
+        <TextView
+            android:id="@+id/cardLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:textColor="#FFFFFFFF"
+            android:textSize="15sp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 500" />
+
+        <TextView
+            android:id="@+id/cardSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:textColor="#B3FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="@font/outfit" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/cardCheck"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="10dp"
+        android:padding="3dp"
+        android:background="@drawable/check_bg"
+        android:src="@drawable/ic_check"
+        android:visibility="gone"
+        android:importantForAccessibility="no" />
+</FrameLayout>

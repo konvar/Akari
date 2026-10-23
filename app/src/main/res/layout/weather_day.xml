@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="88dp"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="10dp"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:background="@drawable/glass_tile"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
+
+    <TextView
+        android:id="@+id/dayName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#E6FFFFFF"
+        android:textSize="14sp"
+        android:fontFamily="@font/outfit"
+        android:fontVariationSettings="'wght' 500" />
+
+    <TextView
+        android:id="@+id/dayIcon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:textSize="28sp" />
+
+    <TextView
+        android:id="@+id/dayMax"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp"
+        android:fontFamily="@font/outfit" />
+
+    <TextView
+        android:id="@+id/dayMin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#99FFFFFF"
+        android:textSize="14sp"
+        android:fontFamily="@font/outfit" />
+</LinearLayout>

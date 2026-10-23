@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <!-- Hero backdrop of the focused title, faded into the background on the left and bottom. -->
+    <FrameLayout
+        android:layout_width="620dp"
+        android:layout_height="350dp"
+        android:layout_gravity="top|end">
+
+        <ImageView
+            android:id="@+id/heroImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:importantForAccessibility="no" />
+
+        <View
+            android:id="@+id/fadeLeft"
+            android:layout_width="280dp"
+            android:layout_height="match_parent"
+            android:background="@drawable/fade_left" />
+
+        <View
+            android:id="@+id/fadeBottom"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/fade_bottom" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/topBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:layout_marginBottom="16dp"
+            android:paddingStart="32dp"
+            android:paddingEnd="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Search sits with the other buttons on the right, leaving the top-left to the hero. -->
+            <ImageView
+                android:id="@+id/searchPill"
+                style="@style/RoundButton"
+                android:layout_marginStart="0dp"
+                android:layout_marginEnd="14dp"
+                android:contentDescription="@string/search"
+                android:src="@drawable/ic_search" />
+
+            <TextClock
+                android:id="@+id/clock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="14dp"
+                android:format12Hour="h:mm"
+                android:format24Hour="HH:mm"
+                android:textColor="#E6FFFFFF"
+                android:textSize="22sp"
+                android:fontFamily="@font/outfit"
+                android:fontVariationSettings="'wght' 300" />
+
+            <TextView
+                android:id="@+id/weatherButton"
+                style="@style/TopButton"
+                android:layout_marginStart="0dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/settingsButton"
+                style="@style/RoundButton"
+                android:contentDescription="@string/settings"
+                android:src="@drawable/ic_settings" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/heroInfo"
+            android:layout_width="440dp"
+            android:layout_height="258dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="-60dp"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/heroLogo"
+                android:layout_width="340dp"
+                android:layout_height="84dp"
+                android:scaleType="matrix"
+                android:visibility="gone"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/heroTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textColor="#FFFFFFFF"
+                android:textSize="30sp"
+                android:fontFamily="@font/outfit"
+                android:fontVariationSettings="'wght' 500"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:id="@+id/heroMeta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="#CCFFFFFF"
+                android:textSize="13sp"
+                android:fontFamily="@font/outfit" />
+
+            <LinearLayout
+                android:id="@+id/heroRatings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/heroDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:maxLines="3"
+                android:ellipsize="end"
+                android:lineSpacingMultiplier="1.15"
+                android:textColor="#A6FFFFFF"
+                android:textSize="12.5sp"
+                android:fontFamily="@font/outfit" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rows"
+            android:focusedByDefault="true"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingTop="6dp"
+            android:paddingBottom="200dp"
+            android:clipToPadding="false"
+            android:clipChildren="false" />
+    </LinearLayout>
+</FrameLayout>

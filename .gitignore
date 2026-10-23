@@ -1,0 +1,17 @@
+# Build output
+build/
+.gradle/
+*.apk
+*.aab
+
+# Local configuration: SDK path and optional built-in app IDs; never committed
+local.properties
+
+# Signing keys
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.DS_Store
