@@ -444,26 +444,9 @@ public class SettingsActivity extends Activity {
     // ---- Playback ----
 
     private void buildPlayback() {
-        buttonCard("OK button", "ok", Buttons.OK_VALUES, Buttons.OK_LABELS, Buttons.ok(this));
-        buttonCard("Hold OK", "hold", Buttons.HOLD_VALUES, Buttons.HOLD_LABELS, Buttons.hold(this));
         trailerCard();
         remoteCards();
         buildPlayers();
-    }
-
-    /** OK or hold-OK: what it does on movie and show cards (Continue Watching keeps its own menu). */
-    private void buttonCard(String title, String which, String[] values, String[] labels, String current) {
-        String now = Buttons.label(values, labels, current);
-        card(title, now + "  \u00B7  press to change", chevron(), v -> {
-            int at = content.indexOfChild(v);
-            Picker.single(this, title + " on movies and shows", java.util.Arrays.asList(labels), now, chosen -> {
-                int i = java.util.Arrays.asList(labels).indexOf(chosen.iterator().next());
-                Buttons.set(this, which, values[i]);
-                showSection(2);
-                View again = content.getChildAt(at);
-                if (again != null) again.requestFocus();
-            });
-        });
     }
 
     /** Remote buttons that open an app from anywhere; each can be changed, removed, or a new one added. */

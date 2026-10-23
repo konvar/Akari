@@ -121,6 +121,13 @@ final class Simkl {
         }
     }
 
+    static int post(Context c, String path, JSONObject body) throws Exception {
+        String token = Tracking.prefs(c).getString("simkl_token", null);
+        Map<String, String> h = headers(token);
+        h.put("Content-Type", "application/json");
+        return Net.json("POST", API + path + "?" + q(), h, body.toString()).code;
+    }
+
     static List<Catalog.Item> continueWatching(Context c, String pkg, Set<String> watched) throws Exception {
         List<Catalog.Item> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();

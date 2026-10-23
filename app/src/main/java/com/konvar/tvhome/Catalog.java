@@ -162,11 +162,9 @@ final class Catalog {
 
     static Intent openIntent(Context c, Item it) {
         if (it.launch != null) return new Intent(it.launch).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        // OK as chosen in Settings → Playback: the same for movies and shows, or the default split.
+        // OK on a movie or show opens its page (hold OK opens the menu).
         boolean title = ("movie".equals(it.type) || "series".equals(it.type)) && it.id != null && it.id.startsWith("tt");
-        String ok = Buttons.ok(c);
-        if (title && Buttons.DETAILS.equals(ok)) return DetailsActivity.intent(c, it);
-        if (title && Buttons.NUVIO.equals(ok)) return nuvioPage(c, it);
+        if (title) return DetailsActivity.intent(c, it);
         if ("series".equals(it.type) && it.id != null && it.id.startsWith("tt")) {
             // A show opens its seasons and episodes; pick one there to play.
             return DetailsActivity.intent(c, it);

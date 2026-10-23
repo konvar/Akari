@@ -43,19 +43,6 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         Catalog.Item it = (Catalog.Item) o;
         if (it.id == null || !it.id.startsWith("tt") || "list".equals(it.type) || "more".equals(it.type)
                 || "season".equals(it.type) || "episode".equals(it.type) || "person".equals(it.type)) return false;
-        // Hold OK as chosen in Settings → Playback.
-        String hold = Buttons.hold(c);
-        try {
-            if (Buttons.NUVIO.equals(hold)) {
-                c.startActivity(Catalog.nuvioPage(c, it));
-                return true;
-            }
-            if (Buttons.PLAY.equals(hold) && "movie".equals(it.type)) {
-                c.startActivity(Player.play(c, it, -1, -1, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                return true;
-            }
-        } catch (android.content.ActivityNotFoundException ignored) {
-        }
         c.startActivity(intent(c, it));
         return true;
     }

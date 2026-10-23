@@ -431,7 +431,9 @@ public class GridActivity extends Activity {
             });
             v.setOnLongClickListener(x -> {
                 int p = getBindingAdapterPosition();
-                return p != RecyclerView.NO_POSITION && DetailsActivity.open(GridActivity.this, items.get(p));
+                if (p == RecyclerView.NO_POSITION) return false;
+                // Hold OK: the menu (play, rate, add to a list, trailer); else the details page.
+                return CardMenu.show(GridActivity.this, items.get(p)) || DetailsActivity.open(GridActivity.this, items.get(p));
             });
             v.setOnFocusChangeListener((x, focused) -> {
                 x.animate().scaleX(focused ? 1.08f : 1f).scaleY(focused ? 1.08f : 1f)

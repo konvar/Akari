@@ -42,6 +42,11 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - The buttons in the top bar adapt to the picture behind them, so they stay readable on bright artwork.
 - Everything next to the focused card is fetched ahead, so artwork, logos and ratings appear instantly.
 
+**OK and hold OK**
+- OK on a movie or show opens its page; Continue Watching and Upcoming cards resume or play.
+- Hold OK on any movie, show or episode opens a menu: Play or Resume, Details, Rate (1-10), Add to a list (your
+  Watchlist and lists from Trakt or MDBList, or Simkl's status lists), and Trailer.
+
 **Details pages**
 - Play or Resume (`Resume S02E05`) straight in your player, and a Trailer button.
 - Seasons and episodes with watched checkmarks and progress, cast, and related titles that preview in the header.
@@ -55,8 +60,8 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - A calendar of upcoming episodes, and new-episode notifications.
 
 **Settings**
-- Row order and visibility, the row focused when the TV starts, OK and long-press OK actions, player app, trailer app,
-  remote buttons, tracking provider, weather, and API keys entered from your phone with a QR code.
+- Row order and visibility, the row focused when the TV starts, player app, trailer app, remote buttons, tracking
+  provider, weather, and API keys entered from your phone with a QR code.
 
 ## Screenshots
 
@@ -83,7 +88,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.1.2.apk
+   adb install Akari-0.1.3.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does
@@ -118,7 +123,7 @@ Open **Settings** (the gear at the top right of Home).
        Enter the Client ID and Client Secret.
      - Simkl: [simkl.com/settings/developer](https://simkl.com/settings/developer). Enter the Client ID.
 2. **Tracking.** Choose where Continue Watching and the checkmarks come from, and sign in with the code shown on screen.
-3. **Playback.** Pick the player app, what OK and long-press OK do, the trailer app, and the remote buttons.
+3. **Playback.** Pick the player app, the trailer app, and the remote buttons.
 4. **Home rows.** Show, hide and reorder the rows (hold OK to move one), and pick the row focused when the TV starts.
 
 ## Remote buttons and voice
