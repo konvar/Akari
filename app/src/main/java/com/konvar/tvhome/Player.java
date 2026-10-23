@@ -48,7 +48,9 @@ final class Player {
     static Map<String, String> candidates(Context c) {
         PackageManager pm = c.getPackageManager();
         Map<String, String> out = new LinkedHashMap<>();
-        for (String link : new String[]{"nuvio://meta?type=movie&id=tt0133093", "stremio:///detail/movie/tt0133093"}) {
+        // Apps that open titles by IMDb id: Nuvio, Stremio (and alike), Wuplay, STRMR.
+        for (String link : new String[]{"nuvio://meta?type=movie&id=tt0133093", "stremio:///detail/movie/tt0133093",
+                "wuplay://detail/movie/tt0133093", "strmr://movie/tt0133093"}) {
             List<ResolveInfo> found = pm.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse(link)), 0);
             for (ResolveInfo r : found) {
                 String p = r.activityInfo.packageName;
@@ -60,6 +62,14 @@ final class Player {
 
     static boolean isNuvio(String pkg) {
         return pkg.startsWith("com.nuvio");
+    }
+
+    static boolean isWuplay(String pkg) {
+        return pkg.startsWith("app.wuplay");
+    }
+
+    static boolean isStrmr(String pkg) {
+        return pkg.startsWith("com.strmr");
     }
 
     /** Plays a movie, or one episode when season and episode are set. */
@@ -75,6 +85,18 @@ final class Player {
      */
     static Intent stremioPlay(String pkg, Catalog.Item it, int season, int episode) {
         boolean series = season > 0 && episode > 0;
+        if (isStrmr(pkg)) {
+            // STRMR: strmr://movie/{imdb}, strmr://series/{imdb}/{season}/{episode}.
+            String uri = series ? "strmr://series/" + it.id + "/" + season + "/" + episode : "strmr://movie/" + it.id;
+            return new Intent(Intent.ACTION_VIEW, Uri.parse(uri)).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+        if (isWuplay(pkg)) {
+            // Wuplay: the same shape as Stremio's detail link, under its own scheme.
+            String uri = series
+                    ? "wuplay://detail/series/" + it.id + "/" + it.id + ":" + season + ":" + episode
+                    : "wuplay://detail/movie/" + it.id + "/" + it.id;
+            return new Intent(Intent.ACTION_VIEW, Uri.parse(uri)).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
         String uri = series
                 ? "stremio:///detail/series/" + it.id + "/" + it.id + ":" + season + ":" + episode
                 : "stremio:///detail/movie/" + it.id + "/" + it.id;
@@ -86,6 +108,8 @@ final class Player {
         String pkg = pkg(c);
         String type = "series".equals(it.type) ? "series" : "movie";
         Uri uri = isNuvio(pkg) ? Uri.parse("nuvio://meta?type=" + type + "&id=" + it.id)
+                : isWuplay(pkg) ? Uri.parse("wuplay://detail/" + type + "/" + it.id)
+                : isStrmr(pkg) ? Uri.parse("strmr://" + type + "/" + it.id)
                 : Uri.parse("stremio:///detail/" + type + "/" + it.id);
         return new Intent(Intent.ACTION_VIEW, uri).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     }

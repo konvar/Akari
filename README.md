@@ -5,7 +5,7 @@
 **A fast, modern home screen for Android TV and Google TV, built around what you watch.**
 
 Continue Watching, Upcoming and your lists from Trakt, Simkl, MDBList or your Nuvio account, with logos, ratings and
-synopses in a hero at the top, and everything opening straight in your player app: Nuvio or Stremio.
+synopses in a hero at the top, and everything opening straight in your player app: Nuvio, Stremio, Wuplay or STRMR.
 
 [Download the latest release](../../releases/latest)
 
@@ -64,6 +64,10 @@ synopses in a hero at the top, and everything opening straight in your player ap
   episode, with its artwork.
 - [Stremio](https://www.stremio.com), and any app that opens `stremio://` links: Play and Resume open the streams of
   the exact movie or episode (`stremio:///detail/{type}/{id}/{videoId}`).
+- [Wuplay](https://github.com/wuplayapp/wuplay-releases): the exact movie or episode
+  (`wuplay://detail/{type}/{id}/{videoId}`).
+- [STRMR](https://github.com/strmrdev/strmr-releases): the movie, or the exact episode
+  (`strmr://movie/{id}`, `strmr://series/{id}/{season}/{episode}`).
 - Choose the player in Settings → Playback; Continue Watching, Upcoming, voice and details pages all use it.
 
 **Settings**
@@ -84,8 +88,9 @@ synopses in a hero at the top, and everything opening straight in your player ap
 ## Requirements
 
 - Android TV or Google TV, Android 8.0 or newer.
-- A player app that opens titles: [Nuvio](https://github.com/NuvioMedia/NuvioTV) or [Stremio](https://www.stremio.com).
-  Any other app that opens `stremio://` links is detected too.
+- A player app that opens titles: [Nuvio](https://github.com/NuvioMedia/NuvioTV), [Stremio](https://www.stremio.com),
+  [Wuplay](https://github.com/wuplayapp/wuplay-releases) or [STRMR](https://github.com/strmrdev/strmr-releases). Any other
+  app that opens `stremio://` links is detected too.
 - Optional: a free account and API key for each service you want (Trakt, Simkl or MDBList for tracking; TMDB, OMDb and
   MDBList for artwork and ratings).
 
@@ -96,7 +101,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.1.4.apk
+   adb install Akari-0.1.5.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does
@@ -175,8 +180,8 @@ Releases are built by GitHub Actions when a `v*` tag is pushed (`.github/workflo
 
 ## Roadmap
 
-- **More player apps.** Nuvio and Stremio work today. Other apps that open movies and shows the same way (such as STRM
-  or Wuplay) are next.
+- **More player apps.** Nuvio, Stremio, Wuplay and STRMR work today. Other apps that open movies and shows by IMDb or
+  TMDB id can be added the same way.
 - Trailers playing muted behind the hero.
 - More rows from TMDB: recommendations, collections, networks and streaming services.
 

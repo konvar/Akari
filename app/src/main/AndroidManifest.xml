@@ -29,6 +29,19 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="nuvio" />
         </intent>
+        <!-- Other player apps that open titles by IMDb id. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="stremio" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="wuplay" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="strmr" />
+        </intent>
         <intent>
             <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>
