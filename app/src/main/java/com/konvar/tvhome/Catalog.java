@@ -178,6 +178,8 @@ final class Catalog {
 
     /** The title's own page in the content app (Nuvio's details, with its streams). */
     static Intent nuvioPage(Context c, Item it) {
+        // The title's page in the player in use; Stremio-style apps open stremio:///detail/{type}/{id}.
+        if (!Player.isNuvio(Player.pkg(c)) && it.id != null && it.id.startsWith("tt")) return Player.open(c, it);
         Uri uri = it.id != null && it.id.startsWith("tmdb:")
                 ? Uri.parse("nuvio://tmdb/" + Uri.encode(it.type) + "/" + Uri.encode(it.id.substring(5)))
                 : Uri.parse("nuvio://meta?type=" + Uri.encode(it.type) + "&id=" + Uri.encode(it.id));

@@ -1087,6 +1087,8 @@ final class Trakt {
     /** The same extras Nuvio puts on its own channel programs, so the card resumes playback in Nuvio. */
     static Intent resumeIntent(String pkg, Catalog.Item it) {
         boolean series = "series".equals(it.type);
+        // Other players (Stremio and alike) get the same episode or movie through their stremio:// link.
+        if (!Player.isNuvio(pkg)) return Player.stremioPlay(pkg, it, series ? it.season : -1, series ? it.episode : -1);
         Intent i = new Intent(Intent.ACTION_VIEW)
                 .setClassName(pkg, "com.nuvio.tv.MainActivity")
                 .putExtra("contentId", it.id)

@@ -262,6 +262,7 @@ final class VoicePlay {
 
     /** The extras Nuvio reads on its own home-screen programs: it opens the stream picker for that video. */
     static Intent playIntent(String pkg, Catalog.Item it, int season, int episode, String episodeTitle) {
+        if (!Player.isNuvio(pkg)) return Player.stremioPlay(pkg, it, season, episode);
         boolean series = season > 0 && episode > 0;
         String logo = it.logo != null ? it.logo : "https://images.metahub.space/logo/medium/" + it.id + "/img";
         Intent i = new Intent(Intent.ACTION_VIEW)

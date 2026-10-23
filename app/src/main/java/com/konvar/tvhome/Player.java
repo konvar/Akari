@@ -66,6 +66,14 @@ final class Player {
     static Intent play(Context c, Catalog.Item it, int season, int episode, String episodeTitle) {
         String pkg = pkg(c);
         if (isNuvio(pkg)) return VoicePlay.playIntent(pkg, it, season, episode, episodeTitle);
+        return stremioPlay(pkg, it, season, episode);
+    }
+
+    /**
+     * Stremio-style apps (Stremio, and others that open stremio:// links): the streams of one movie or episode,
+     * stremio:///detail/{type}/{id}/{videoId}, where an episode's video id is id:season:episode.
+     */
+    static Intent stremioPlay(String pkg, Catalog.Item it, int season, int episode) {
         boolean series = season > 0 && episode > 0;
         String uri = series
                 ? "stremio:///detail/series/" + it.id + "/" + it.id + ":" + season + ":" + episode
