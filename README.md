@@ -65,7 +65,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 | ![Ratings chart](docs/screenshots/06-ratings-chart.jpg) | ![Related](docs/screenshots/07-related.jpg) |
 | ![Calendar](docs/screenshots/08-calendar.jpg) | ![Grid](docs/screenshots/09-grid.jpg) |
 | ![Filters](docs/screenshots/10-filters.jpg) | ![Settings](docs/screenshots/11-settings.jpg) |
-| ![Tracking](docs/screenshots/12-tracking.jpg) | |
+| ![Tracking](docs/screenshots/12-tracking.jpg) | ![Search](docs/screenshots/13-search.jpg) |
 
 ## Requirements
 
@@ -81,7 +81,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.1.0.apk
+   adb install Akari-0.1.1.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does

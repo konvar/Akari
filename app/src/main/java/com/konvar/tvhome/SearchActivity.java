@@ -24,6 +24,12 @@ import java.util.List;
 /** Search movies and shows by keyboard or voice; every result opens in the content app. */
 public class SearchActivity extends Activity implements Rows.Listener {
 
+    /**
+     * Search has its own threads: the shared queues can be busy for minutes with Home's Trakt and catalog loading,
+     * and a search must answer at once.
+     */
+    private static final java.util.concurrent.ExecutorService SEARCH = java.util.concurrent.Executors.newFixedThreadPool(3);
+
     private static final int REQUEST_VOICE = 1;
     private static final long DEBOUNCE_MS = 450;
 
@@ -191,7 +197,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
         String[] types = {"movie", "series"};
         int[] titles = {R.string.movies, R.string.shows};
         // Third: user-made Trakt lists matching the query.
-        Net.API.execute(() -> {
+        SEARCH.execute(() -> {
             List<Catalog.Item> lists = null;
             try {
                 if (Trakt.configured()) lists = Trakt.searchLists(q, 30);
@@ -212,7 +218,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
         });
         for (int i = 0; i < 2; i++) {
             int index = i;
-            Net.IO.execute(() -> {
+            SEARCH.execute(() -> {
                 List<Catalog.Item> items = null;
                 try {
                     items = Catalog.search(addon, types[index], q);
