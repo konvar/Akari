@@ -99,6 +99,7 @@ final class Tracking {
         }
         items.sort((a, b) -> Long.compare(b.order, a.order));
         Trakt.watchedIds = watched;
+        loadMyRatings(c, provider);
         Trakt.fillThumbs(c, items, null);
         Log.i(TAG, label(provider) + ": " + items.size() + " in progress, " + watched.size() + " watched, "
                 + (System.currentTimeMillis() - started) + " ms");
@@ -145,6 +146,43 @@ final class Tracking {
             if (list.size() < 1000) break;
         }
         return out;
+    }
+
+    /** Your ratings (1–10) from Simkl or MDBList, for the corner on the cards; Nuvio does not sync ratings. */
+    private static void loadMyRatings(Context c, String provider) {
+        Map<String, Integer> out = new HashMap<>();
+        try {
+            if (SIMKL.equals(provider)) {
+                Simkl.myRatings(c, out);
+            } else if (MDBLIST.equals(provider)) {
+                Map<String, String> h = new HashMap<>();
+                h.put("Accept", "application/json");
+                Net.Response r = Net.json("GET", MDB + "/sync/ratings?apikey=" + Keys.get(Keys.MDBLIST), h, null);
+                if (r.code == 200) ratingsFrom(rows(r.body), out);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, label(provider) + " ratings failed: " + e);
+            return;
+        }
+        Trakt.saveMyRatings(c, out);
+    }
+
+    /** Trakt-shaped rating rows (movie / show / season / episode objects with ids, and a rating). */
+    static void ratingsFrom(List<JSONObject> list, Map<String, Integer> out) {
+        for (JSONObject e : list) {
+            int rating = e.optInt("rating", e.optInt("user_rating"));
+            if (rating < 1) continue;
+            JSONObject movie = e.optJSONObject("movie");
+            JSONObject show = e.optJSONObject("show");
+            JSONObject season = e.optJSONObject("season");
+            JSONObject ep = e.optJSONObject("episode");
+            if (show == null && ep != null) show = ep.optJSONObject("show");
+            String showId = show != null ? Trakt.imdbOf(show) : null;
+            if (movie != null && Trakt.imdbOf(movie) != null) out.put("m:" + Trakt.imdbOf(movie), rating);
+            else if (ep != null && showId != null) out.put("e:" + showId + ":" + ep.optInt("season") + ":" + ep.optInt("number", ep.optInt("episode")), rating);
+            else if (season != null && showId != null) out.put("s:" + showId + ":" + season.optInt("number"), rating);
+            else if (showId != null) out.put("s:" + showId, rating);
+        }
     }
 
     // ---- shared helpers for the providers ----

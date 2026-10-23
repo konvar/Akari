@@ -36,6 +36,8 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - Content rows: trending, popular, box office, most watched, most anticipated, popular lists, and Airing tonight.
 - Your apps, with the ones you choose first.
 - Checkmarks on everything you have watched; Hide watched in every grid.
+- Your own ratings in the corner of every poster, season and episode, as the old Trakt website showed them: a folded
+  corner from grey (1) to red (10), from Trakt, Simkl or MDBList.
 - Clock and weather (automatic location or a town you choose); both can be hidden.
 - The buttons in the top bar adapt to the picture behind them, so they stay readable on bright artwork.
 - Everything next to the focused card is fetched ahead, so artwork, logos and ratings appear instantly.
@@ -81,7 +83,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.1.1.apk
+   adb install Akari-0.1.2.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does

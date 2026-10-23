@@ -10,5 +10,6 @@ public class TvHomeApp extends Application {
         Keys.app = this;
         Keys.tidy();
         Trakt.watchedIds = RowCache.loadIds(this, "watched");
+        Trakt.loadSavedRatings(this);
     }
 }

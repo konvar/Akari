@@ -297,6 +297,18 @@ final class Rows {
                 Apps.loadArt(h.image, e, px(c, 160), px(c, 90));
             } else {
                 Catalog.Item it = (Catalog.Item) item;
+                // Your own Trakt rating in the top-right corner; the watched check moves to the left beside it.
+                int mine = Trakt.myRating(it);
+                CornerRating corner = CornerRating.on(h.itemView);
+                if (corner != null) corner.set(mine);
+                if (h.check != null) {
+                    android.widget.FrameLayout.LayoutParams clp = (android.widget.FrameLayout.LayoutParams) h.check.getLayoutParams();
+                    int g = android.view.Gravity.TOP | (mine > 0 ? android.view.Gravity.START : android.view.Gravity.END);
+                    if (clp.gravity != g) {
+                        clp.gravity = g;
+                        h.check.setLayoutParams(clp);
+                    }
+                }
                 if (h.countdown != null && !"upcoming".equals(it.kind)) bindCountdown(h, it);
                 h.label.setText(it.name);
                 if ("more".equals(it.type)) {

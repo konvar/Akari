@@ -71,6 +71,84 @@ final class Trakt {
     /** The last Continue Watching list, for voice requests such as "play From" (resume where you are). */
     static volatile List<Catalog.Item> lastContinueWatching = new ArrayList<>();
 
+    /** Your ratings: "m:tt…" movies, "s:tt…" shows, "s:tt…:N" seasons, "e:tt…:S:E" episodes → 1–10. */
+    static volatile Map<String, Integer> myRatings = new HashMap<>();
+
+    /** Your rating of this card's movie, show, season or episode; 0 when you have not rated it. */
+    static int myRating(Catalog.Item it) {
+        if (it == null || it.id == null) return 0;
+        Integer r;
+        if ("movie".equals(it.type)) r = myRatings.get("m:" + it.id);
+        else if ("episode".equals(it.type)) r = myRatings.get("e:" + it.id + ":" + it.season + ":" + it.episode);
+        else if ("season".equals(it.type)) r = it.season > 0 ? myRatings.get("s:" + it.id + ":" + it.season) : null;
+        else if ("series".equals(it.type) && !"cw".equals(it.kind) && !"upcoming".equals(it.kind)) r = myRatings.get("s:" + it.id);
+        else r = null;
+        return r != null ? r : 0;
+    }
+
+    /** All your ratings from Trakt, in parallel; saved so the corners show at once on the next start. */
+    static void loadMyRatings(Context c, String token) {
+        Map<String, Integer> out = new HashMap<>();
+        try {
+            List<java.util.concurrent.Future<JSONArray>> parts = new ArrayList<>();
+            for (String kind : new String[]{"movies", "shows", "seasons", "episodes"}) {
+                parts.add(POOL.submit(() -> getAll("/sync/ratings/" + kind, token)));
+            }
+            for (java.util.concurrent.Future<JSONArray> f : parts) {
+                JSONArray a = await(f);
+                for (int i = 0; i < a.length(); i++) {
+                    JSONObject e = a.getJSONObject(i);
+                    int rating = e.optInt("rating");
+                    String type = e.optString("type");
+                    JSONObject show = e.optJSONObject("show");
+                    String showId = show != null ? imdbOf(show) : null;
+                    if ("movie".equals(type)) {
+                        JSONObject m = e.optJSONObject("movie");
+                        String id = m != null ? imdbOf(m) : null;
+                        if (id != null) out.put("m:" + id, rating);
+                    } else if ("show".equals(type) && showId != null) {
+                        out.put("s:" + showId, rating);
+                    } else if ("season".equals(type) && showId != null) {
+                        JSONObject s = e.optJSONObject("season");
+                        if (s != null) out.put("s:" + showId + ":" + s.optInt("number"), rating);
+                    } else if ("episode".equals(type) && showId != null) {
+                        JSONObject ep = e.optJSONObject("episode");
+                        if (ep != null) out.put("e:" + showId + ":" + ep.optInt("season") + ":" + ep.optInt("number"), rating);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "my ratings failed: " + e);
+            return;
+        }
+        saveMyRatings(c, out);
+    }
+
+    /** Your ratings from whichever provider is in use, kept for the session and saved for the next start. */
+    static void saveMyRatings(Context c, Map<String, Integer> out) {
+        myRatings = out;
+        c.getSharedPreferences("trakt_ratings", Context.MODE_PRIVATE).edit()
+                .putString("all", new JSONObject(out).toString()).apply();
+        Log.i(TAG, "my ratings: " + out.size());
+    }
+
+    /** The ratings saved last time, so the corners appear before Trakt answers. */
+    static void loadSavedRatings(Context c) {
+        try {
+            String s = c.getSharedPreferences("trakt_ratings", Context.MODE_PRIVATE).getString("all", null);
+            if (s == null) return;
+            JSONObject o = new JSONObject(s);
+            Map<String, Integer> out = new HashMap<>();
+            java.util.Iterator<String> keys = o.keys();
+            while (keys.hasNext()) {
+                String k = keys.next();
+                out.put(k, o.optInt(k));
+            }
+            myRatings = out;
+        } catch (Exception ignored) {
+        }
+    }
+
     private Trakt() {
     }
 
@@ -268,6 +346,7 @@ final class Trakt {
         java.util.concurrent.Future<JSONArray> watchedMovies = POOL.submit(() -> getAllParallel("/sync/watched/movies", token));
         java.util.concurrent.Future<JSONArray> watchedShowsF = POOL.submit(() -> getAllParallel("/sync/watched/shows?extended=full", token));
         java.util.concurrent.Future<Set<String>> hiddenF = POOL.submit(() -> loadHidden(token));
+        POOL.submit(() -> loadMyRatings(c, token));
 
         List<Catalog.Item> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();

@@ -108,6 +108,19 @@ final class Simkl {
         return out;
     }
 
+    /** Your Simkl ratings of movies and shows (user_rating on each library item). */
+    static void myRatings(Context c, Map<String, Integer> out) throws Exception {
+        for (String kind : new String[]{"movies", "shows", "anime"}) {
+            for (JSONObject e : Tracking.rows(get(c, "/sync/all-items/" + kind))) {
+                int rating = e.optInt("user_rating");
+                if (rating < 1) continue;
+                JSONObject media = e.optJSONObject("movies".equals(kind) ? "movie" : "show");
+                String imdb = media != null ? Trakt.imdbOf(media) : null;
+                if (imdb != null) out.put(("movies".equals(kind) ? "m:" : "s:") + imdb, rating);
+            }
+        }
+    }
+
     static List<Catalog.Item> continueWatching(Context c, String pkg, Set<String> watched) throws Exception {
         List<Catalog.Item> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();

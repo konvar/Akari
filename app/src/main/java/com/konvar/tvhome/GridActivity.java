@@ -392,6 +392,15 @@ public class GridActivity extends Activity {
             } else {
                 ImageLoader.load(h.image, it.poster, Rows.px(GridActivity.this, 100), Rows.px(GridActivity.this, 150));
                 h.check.setVisibility(Trakt.isWatched(it.id) ? View.VISIBLE : View.GONE);
+                int mine = Trakt.myRating(it);
+                CornerRating corner = CornerRating.on(h.itemView);
+                if (corner != null) corner.set(mine);
+                android.widget.FrameLayout.LayoutParams clp = (android.widget.FrameLayout.LayoutParams) h.check.getLayoutParams();
+                int g = android.view.Gravity.TOP | (mine > 0 ? android.view.Gravity.START : android.view.Gravity.END);
+                if (clp.gravity != g) {
+                    clp.gravity = g;
+                    h.check.setLayoutParams(clp);
+                }
             }
             // Next page when the last two rows come into view.
             if (position >= items.size() - 16) loadMore();
