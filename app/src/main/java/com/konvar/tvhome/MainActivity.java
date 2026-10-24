@@ -132,6 +132,16 @@ public class MainActivity extends Activity implements Rows.Listener {
         lm.setItemPrefetchEnabled(true);
         rowList.setLayoutManager(lm);
         rowList.setItemAnimator(null);
+        // The line under the hero: once the page stops moving, the focused row's title sits right on it.
+        rowList.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@androidx.annotation.NonNull RecyclerView rv, int state) {
+                if (state == RecyclerView.SCROLL_STATE_IDLE) pinFocusedRow();
+            }
+        });
+        rowList.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (b - t != ob - ot) rowList.post(this::pinFocusedRow);
+        });
         adapter = new Rows.RowAdapter(this);
         rowList.setAdapter(adapter);
 
@@ -941,11 +951,30 @@ public class MainActivity extends Activity implements Rows.Listener {
                 } else {
                     heroInfo.setTag(R.id.height_anim, null);
                     if (!show) heroInfo.setVisibility(View.GONE);
+                    rowList.post(MainActivity.this::pinFocusedRow);
                 }
             }
         };
         heroInfo.setTag(R.id.height_anim, cb);
         android.view.Choreographer.getInstance().postFrameCallback(cb);
+    }
+
+    /**
+     * Keeps the focused row's title on the line under the hero. A scroll that started while the hero was still
+     * opening or folding (Down from Your apps) ends too high or too low; this puts it right once things settle.
+     */
+    private void pinFocusedRow() {
+        if (!userMoved || rowList.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) return;
+        if (heroInfo.getTag(R.id.height_anim) != null) return;
+        int dy;
+        if (focusedRow <= 0) {
+            dy = -rowList.computeVerticalScrollOffset();
+        } else {
+            RecyclerView.ViewHolder h = rowList.findViewHolderForAdapterPosition(focusedRow);
+            if (h == null) return;
+            dy = h.itemView.getTop() - rowList.getPaddingTop();
+        }
+        if (Math.abs(dy) > 1) rowList.smoothScrollBy(0, dy);
     }
 
     private final Runnable prefetch = () -> {
