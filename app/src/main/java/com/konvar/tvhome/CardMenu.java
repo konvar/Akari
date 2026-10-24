@@ -102,7 +102,7 @@ final class CardMenu {
                     () -> TraktActions.removeFromContinue(a, it), R.string.menu_done_removed));
             if (series) {
                 option(a, panel, a.getString(R.string.menu_hide_show), () -> run(a, dialog,
-                        () -> TraktActions.hide(a, it, "progress_watched"), R.string.menu_done_hidden));
+                        () -> TraktActions.hide(a, it, "dropped"), R.string.menu_done_hidden));
             }
         } else if ("upcoming".equals(it.kind) && Tracking.TRAKT.equals(Tracking.active(a))) {
             option(a, panel, a.getString(R.string.menu_hide_upcoming), () -> run(a, dialog,

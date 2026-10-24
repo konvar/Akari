@@ -60,6 +60,8 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
 **Tracking**
 - Trakt, Simkl, MDBList or your Nuvio account, chosen in Settings, like in Nuvio.
+- Continue Watching follows Nuvio's rules: only shows you dropped are left out, and a window setting keeps titles
+  watched in the last 14 to 365 days, or all history (the default).
 - A calendar of upcoming episodes, and new-episode notifications.
 
 **Player apps**
@@ -104,7 +106,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.1.7.apk
+   adb install Akari-0.2.0.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does
@@ -138,7 +140,8 @@ Open **Settings** (the gear at the top right of Home).
      - Trakt: [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications), redirect URI `urn:ietf:wg:oauth:2.0:oob`.
        Enter the Client ID and Client Secret.
      - Simkl: [simkl.com/settings/developer](https://simkl.com/settings/developer). Enter the Client ID.
-2. **Tracking.** Choose where Continue Watching and the checkmarks come from, and sign in with the code shown on screen.
+2. **Tracking.** Choose where Continue Watching and the checkmarks come from, sign in with the code shown on screen,
+   and set how far back Continue Watching goes.
 3. **Playback.** Pick the player app, the trailer app, and the remote buttons.
 4. **Home rows.** Show, hide and reorder the rows (hold OK to move one), pick the row focused when the TV starts, and
    turn on the trailer behind the hero (muted or with sound, and after how many seconds).

@@ -174,6 +174,15 @@ final class Rows {
             notifyItemChanged(position);
         }
 
+        /** Every row back to its first card (Home pressed): remembered positions and the rows on screen. */
+        void resetScroll(RecyclerView list) {
+            for (Row r : rows) r.lastFocus = 0;
+            for (int i = 0; i < list.getChildCount(); i++) {
+                RecyclerView.ViewHolder h = list.getChildViewHolder(list.getChildAt(i));
+                if (h instanceof Holder) ((Holder) h).cards.scrollToPosition(0);
+            }
+        }
+
         Row get(int position) {
             return position >= 0 && position < rows.size() ? rows.get(position) : null;
         }

@@ -32,6 +32,25 @@ final class Tracking {
         return c.getSharedPreferences("tracking", Context.MODE_PRIVATE);
     }
 
+    /** Continue Watching keeps titles watched in the last N days (0 = all history, the default). */
+    static int windowDays(Context c) {
+        return prefs(c).getInt("cw_days", 0);
+    }
+
+    static void setWindowDays(Context c, int days) {
+        prefs(c).edit().putInt("cw_days", days).apply();
+    }
+
+    /** Drops what was last watched before the window (order holds the last-watched time). */
+    static List<Catalog.Item> withinWindow(Context c, List<Catalog.Item> items) {
+        int days = windowDays(c);
+        if (days <= 0 || items == null) return items;
+        long since = System.currentTimeMillis() - days * 24L * 3600 * 1000L;
+        List<Catalog.Item> out = new ArrayList<>();
+        for (Catalog.Item it : items) if (it.order <= 0 || it.order >= since) out.add(it);
+        return out;
+    }
+
     static String label(String provider) {
         switch (provider) {
             case TRAKT:
@@ -98,6 +117,7 @@ final class Tracking {
                 return null;
         }
         items.sort((a, b) -> Long.compare(b.order, a.order));
+        items = withinWindow(c, items);
         Trakt.watchedIds = watched;
         loadMyRatings(c, provider);
         Trakt.fillThumbs(c, items, null);

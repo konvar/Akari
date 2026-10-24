@@ -21,6 +21,7 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -115,6 +116,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         heroDescription = findViewById(R.id.heroDescription);
         heroSynopsis = new Synopsis(heroDescription, 4);
         heroTrailer = new HeroTrailer((android.widget.FrameLayout) heroImage.getParent());
+        // While a trailer plays, the top bar fades away (and comes back when it stops).
+        heroTrailer.onShowing = on -> fade(findViewById(R.id.topBar), on ? 0f : 1f, 450);
 
         rowList = findViewById(R.id.rows);
         LinearLayoutManager lm = new LinearLayoutManager(this) {
@@ -136,6 +139,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         weatherButton = findViewById(R.id.weatherButton);
         weatherButton.setOnClickListener(v -> showForecast());
         findViewById(R.id.settingsButton).setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        // Right on Settings, the last button of the top bar, stays there instead of jumping to a row below.
+        findViewById(R.id.settingsButton).setNextFocusRightId(R.id.settingsButton);
 
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -268,6 +273,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         // Home pressed while already home: back to the first card, like Google TV.
         userMoved = false;
         leftRowTitle = null;
+        // Home: every row starts again from its first card, not only the one focused.
+        adapter.resetScroll(rowList);
         getSharedPreferences("home_focus", MODE_PRIVATE).edit().clear().apply();
         goToTop();
     }
@@ -722,6 +729,79 @@ public class MainActivity extends Activity implements Rows.Listener {
         goToTop();
     }
 
+    /**
+     * A smooth fade driven by the display's frames, so it runs even with Android's animations switched off in the
+     * developer options; eased in and out.
+     */
+    private void fade(View v, float to, long ms) {
+        Object old = v.getTag(R.id.fade_anim);
+        if (old instanceof android.view.Choreographer.FrameCallback) {
+            android.view.Choreographer.getInstance().removeFrameCallback((android.view.Choreographer.FrameCallback) old);
+        }
+        float from = v.getAlpha();
+        if (Math.abs(from - to) < 0.01f) return;
+        long[] t0 = {0};
+        android.view.Choreographer.FrameCallback cb = new android.view.Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long now) {
+                if (t0[0] == 0) t0[0] = now;
+                float p = Math.min(1f, (now - t0[0]) / 1e6f / ms);
+                float eased = (float) (0.5 - 0.5 * Math.cos(Math.PI * p));
+                v.setAlpha(from + (to - from) * eased);
+                if (p < 1f) android.view.Choreographer.getInstance().postFrameCallback(this);
+                else v.setTag(R.id.fade_anim, null);
+            }
+        };
+        v.setTag(R.id.fade_anim, cb);
+        android.view.Choreographer.getInstance().postFrameCallback(cb);
+    }
+
+    /**
+     * The hero block (logo, line, ratings, synopsis) folds away for apps and opens again for movies and shows: its
+     * height glides with an ease, while it fades, so the rows below move smoothly instead of jumping.
+     */
+    private boolean heroInfoShown = true;
+    private int heroInfoHeight;
+    private int heroInfoMargin = Integer.MIN_VALUE;
+
+    private void showHeroInfo(boolean show) {
+        if (heroInfoShown == show && heroInfo.getVisibility() == View.VISIBLE) return;
+        heroInfoShown = show;
+        ViewGroup.LayoutParams lp = heroInfo.getLayoutParams();
+        if (heroInfoHeight == 0) heroInfoHeight = lp.height > 0 ? lp.height : heroInfo.getHeight();
+        // Its negative top margin (it sits up into the top bar's free corner) shrinks with it, so nothing jumps.
+        if (heroInfoMargin == Integer.MIN_VALUE) heroInfoMargin = ((ViewGroup.MarginLayoutParams) lp).topMargin;
+        heroInfo.setVisibility(View.VISIBLE);
+        int from = heroInfo.getHeight() > 0 || !show ? heroInfo.getHeight() : 0;
+        int to = show ? heroInfoHeight : 0;
+        fade(heroInfo, show ? 1f : 0f, 360);
+        Object old = heroInfo.getTag(R.id.height_anim);
+        if (old instanceof android.view.Choreographer.FrameCallback) {
+            android.view.Choreographer.getInstance().removeFrameCallback((android.view.Choreographer.FrameCallback) old);
+        }
+        long[] t0 = {0};
+        android.view.Choreographer.FrameCallback cb = new android.view.Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long now) {
+                if (t0[0] == 0) t0[0] = now;
+                float p = Math.min(1f, (now - t0[0]) / 1e6f / 380f);
+                float eased = (float) (0.5 - 0.5 * Math.cos(Math.PI * p));
+                ViewGroup.MarginLayoutParams l = (ViewGroup.MarginLayoutParams) heroInfo.getLayoutParams();
+                l.height = Math.round(from + (to - from) * eased);
+                l.topMargin = heroInfoHeight > 0 ? Math.round(heroInfoMargin * (l.height / (float) heroInfoHeight)) : heroInfoMargin;
+                heroInfo.setLayoutParams(l);
+                if (p < 1f) {
+                    android.view.Choreographer.getInstance().postFrameCallback(this);
+                } else {
+                    heroInfo.setTag(R.id.height_anim, null);
+                    if (!show) heroInfo.setVisibility(View.GONE);
+                }
+            }
+        };
+        heroInfo.setTag(R.id.height_anim, cb);
+        android.view.Choreographer.getInstance().postFrameCallback(cb);
+    }
+
     private final Runnable prefetch = () -> {
         if (heroItem instanceof Catalog.Item) DetailsPrefetch.get(this, (Catalog.Item) heroItem);
     };
@@ -770,7 +850,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             // Lists and "Show more" have no artwork: just their name and line in the hero.
             heroTrailer.focus(null);
             Catalog.Item it = (Catalog.Item) item;
-            heroInfo.setVisibility(View.VISIBLE);
+            showHeroInfo(true);
             heroLogo.setVisibility(View.GONE);
             heroTitle.setVisibility(View.VISIBLE);
             heroTitle.setText(it.name);
@@ -778,13 +858,13 @@ public class MainActivity extends Activity implements Rows.Listener {
             heroDescription.setText(it.description);
             heroSynopsis.restart();
             heroRatings.setVisibility(View.GONE);
-            heroImage.animate().alpha(0f).setDuration(200).start();
+            fade(heroImage, 0f, 320);
             heroImage.setTag(R.id.image_url, null);
             return;
         }
         if (item instanceof Catalog.Item) {
             Catalog.Item it = (Catalog.Item) item;
-            heroInfo.setVisibility(View.VISIBLE);
+            showHeroInfo(true);
             heroTitle.setText(it.name);
             if (it.launch != null) {
                 String sub = it.subtitle == null || it.subtitle.isEmpty() ? "" : "  ·  " + it.subtitle;
@@ -838,7 +918,7 @@ public class MainActivity extends Activity implements Rows.Listener {
                     if (heroItem != it) return;
                     android.graphics.drawable.Drawable d = heroImage.getDrawable();
                     if (d instanceof BitmapDrawable) {
-                        heroImage.animate().alpha(1f).setDuration(250).start();
+                        fade(heroImage, 1f, 380);
                         setAmbient(ImageLoader.ambient(((BitmapDrawable) d).getBitmap(), baseColor));
                         adaptTopBar(((BitmapDrawable) d).getBitmap());
                     } else {
@@ -853,8 +933,8 @@ public class MainActivity extends Activity implements Rows.Listener {
             Apps.Entry e = (Apps.Entry) item;
             heroTrailer.focus(null);
             // Apps get no hero, so the row sits right under the top bar instead of below an empty block.
-            heroInfo.setVisibility(View.GONE);
-            heroImage.animate().alpha(0f).setDuration(200).start();
+            showHeroInfo(false);
+            fade(heroImage, 0f, 320);
             heroImage.setTag(R.id.image_url, null);
             adaptTopBar(null);
             ambientFromCache("app:" + e.pkg + '@' + Rows.px(this, 160));

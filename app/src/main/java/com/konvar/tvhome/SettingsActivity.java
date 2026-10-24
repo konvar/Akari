@@ -562,6 +562,7 @@ public class SettingsActivity extends Activity {
     // ---- Tracking ----
 
     private void buildTracking() {
+        windowCard();
         String chosen = Tracking.chosen(this);
         for (String p : Tracking.ALL) {
             boolean connected = Tracking.connected(this, p);
@@ -614,6 +615,25 @@ public class SettingsActivity extends Activity {
             });
             c.setTag(p);
         }
+    }
+
+    /** How far back Continue Watching goes. */
+    private void windowCard() {
+        int days = Tracking.windowDays(this);
+        String now = days <= 0 ? "All history" : days + " days";
+        card("Continue Watching window", "Titles watched in the last " + (days <= 0 ? "… any time" : days + " days") + "  ·  press to change",
+                chevron(), v -> {
+                    int at = content.indexOfChild(v);
+                    java.util.List<String> options = java.util.Arrays.asList("14 days", "30 days", "60 days", "90 days",
+                            "180 days", "365 days", "All history");
+                    Picker.single(this, "Continue Watching window", options, now, chosen -> {
+                        String c = chosen.iterator().next();
+                        Tracking.setWindowDays(this, c.startsWith("All") ? 0 : Integer.parseInt(c.split(" ")[0]));
+                        showSection(3);
+                        View again = content.getChildAt(at);
+                        if (again != null) again.requestFocus();
+                    });
+                });
     }
 
     /** Signs in to a provider, then makes it the one in use. */

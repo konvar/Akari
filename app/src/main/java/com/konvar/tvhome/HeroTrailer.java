@@ -47,6 +47,16 @@ final class HeroTrailer {
         }
     };
 
+    /** Told when the trailer appears (true) and goes (false): Home fades its top bar out of the way. */
+    java.util.function.Consumer<Boolean> onShowing;
+    private boolean showing;
+
+    private void showing(boolean on) {
+        if (on == showing) return;
+        showing = on;
+        if (onShowing != null) onShowing.accept(on);
+    }
+
     HeroTrailer(FrameLayout heroBox) {
         this.box = heroBox;
         this.c = heroBox.getContext();
@@ -119,6 +129,7 @@ final class HeroTrailer {
     void stop() {
         generation++;
         box.removeCallbacks(start);
+        showing(false);
         if (texture != null) texture.setAlpha(0f);
         if (player != null) {
             try {
@@ -228,14 +239,23 @@ final class HeroTrailer {
                 mp.setVolume(v, v);
                 mp.setOnVideoSizeChangedListener((p, w, h) -> crop(w, h));
                 mp.setOnInfoListener((p, what, extra) -> {
-                    if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START && gen == generation) texture.setAlpha(1f);
+                    if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START && gen == generation) {
+                        texture.setAlpha(1f);
+                        showing(true);
+                    }
                     return false;
                 });
                 mp.setOnCompletionListener(p -> {
-                    if (gen == generation) texture.setAlpha(0f);
+                    if (gen == generation) {
+                        texture.setAlpha(0f);
+                        showing(false);
+                    }
                 });
                 mp.setOnErrorListener((p, what, extra) -> {
-                    if (gen == generation) texture.setAlpha(0f);
+                    if (gen == generation) {
+                        texture.setAlpha(0f);
+                        showing(false);
+                    }
                     return true;
                 });
                 mp.setOnPreparedListener(p -> {
@@ -301,9 +321,14 @@ final class HeroTrailer {
                 Net.MAIN.post(() -> {
                     if (gen != generation || web == null) return;
                     long wait = dueAt - android.os.SystemClock.uptimeMillis();
-                    if (wait <= 0) web.setAlpha(1f);
-                    else web.postDelayed(() -> {
-                        if (gen == generation && web != null) web.setAlpha(1f);
+                    if (wait <= 0) {
+                        web.setAlpha(1f);
+                        showing(true);
+                    } else web.postDelayed(() -> {
+                        if (gen == generation && web != null) {
+                            web.setAlpha(1f);
+                            showing(true);
+                        }
                     }, wait);
                 });
             }
@@ -311,7 +336,10 @@ final class HeroTrailer {
             @JavascriptInterface
             public void ended() {
                 Net.MAIN.post(() -> {
-                    if (gen == generation && web != null) web.setAlpha(0f);
+                    if (gen == generation && web != null) {
+                        web.setAlpha(0f);
+                        showing(false);
+                    }
                 });
             }
         }, "akari");

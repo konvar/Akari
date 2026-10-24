@@ -103,7 +103,7 @@ final class TraktActions {
             JSONObject e = shows.getJSONObject(i);
             JSONObject show = e.optJSONObject("show");
             Catalog.Item it = Trakt.titleOf(show, false);
-            if (it == null || Trakt.hiddenShows.contains(it.id)) continue;
+            if (it == null || Trakt.calendarHidden.contains(it.id)) continue;
             JSONObject ep = e.optJSONObject("episode");
             if (ep != null) {
                 it.season = ep.optInt("season");
@@ -159,7 +159,7 @@ final class TraktActions {
     static boolean removeFromContinue(Context c, Catalog.Item it) {
         try {
             if (it.playbackId > 0) return Trakt.authedDelete(c, "/sync/playback/" + it.playbackId) == 204;
-            return hide(c, it, "progress_watched");
+            return hide(c, it, "dropped");
         } catch (Exception e) {
             return false;
         }
@@ -171,7 +171,10 @@ final class TraktActions {
             JSONObject body = new JSONObject().put("shows", new JSONArray()
                     .put(new JSONObject().put("ids", new JSONObject().put("imdb", it.id))));
             int code = Trakt.authedPost(c, "/users/hidden/" + section, body);
-            if (code == 201 || code == 200) Trakt.hiddenShows.add(it.id);
+            if (code == 201 || code == 200) {
+                if ("dropped".equals(section)) Trakt.hiddenShows.add(it.id);
+                Trakt.calendarHidden.add(it.id);
+            }
             return code == 201 || code == 200;
         } catch (Exception e) {
             return false;

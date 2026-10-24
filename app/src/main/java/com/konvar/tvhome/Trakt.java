@@ -47,11 +47,20 @@ final class Trakt {
     /** Shows with every aired episode watched; Nuvio's list may still offer them, Trakt knows better. */
     static volatile Set<String> finishedShows = new HashSet<>();
     /** Shows hidden on Trakt (from progress, from the calendar, or dropped): left out of both rows. */
+    /** Shows dropped on Trakt: left out of Continue Watching (as Nuvio does). */
     static volatile Set<String> hiddenShows = new HashSet<>();
+    /** Shows hidden from the calendar, or dropped: left out of Upcoming and the calendar. */
+    static volatile Set<String> calendarHidden = new HashSet<>();
 
+    /**
+     * Dropped shows (returned, for Continue Watching) and, into {@link #calendarHidden}, those hidden from the
+     * calendar too. "Hidden from progress" is not used: like Nuvio, Continue Watching only leaves out dropped shows.
+     */
     private static Set<String> loadHidden(String token) {
-        Set<String> hidden = new HashSet<>();
-        for (String section : new String[]{"progress_watched", "calendar", "dropped"}) {
+        Set<String> dropped = new HashSet<>();
+        Set<String> calendar = new HashSet<>();
+        for (String section : new String[]{"dropped", "calendar"}) {
+            Set<String> hidden = "dropped".equals(section) ? dropped : calendar;
             try {
                 JSONArray a = getAll("/users/hidden/" + section + "?type=show", token);
                 for (int i = 0; i < a.length(); i++) {
@@ -63,7 +72,10 @@ final class Trakt {
                 Log.w(TAG, "hidden " + section + " failed", e);
             }
         }
-        return hidden;
+        calendar.addAll(dropped);
+        calendarHidden = calendar;
+        Log.i(TAG, "dropped shows: " + dropped.size() + ", hidden from calendar: " + calendar.size());
+        return dropped;
     }
 
     /** Every show with at least one watched episode: Upcoming lists only these. */
@@ -460,6 +472,8 @@ final class Trakt {
         Trakt.finishedShows = finished;
 
         items.sort((a, b) -> Long.compare(b.order, a.order));
+        // Like Nuvio: only what was watched within the Continue Watching window (Settings → Tracking).
+        items = Tracking.withinWindow(c, items);
         fillThumbs(c, items, token);
         lastContinueWatching = items;
         Log.i(TAG, "continue watching: " + items.size() + " items, " + watchedIds.size() + " watched, "
@@ -596,7 +610,7 @@ final class Trakt {
             String imdb = show != null ? imdbOf(show) : null;
             long aired = time(e.optString("first_aired"));
             // Only shows you have watched episodes of, not ones that are just on a watchlist.
-            if (imdb == null || !watchedShows.contains(imdb) || hiddenShows.contains(imdb)) continue;
+            if (imdb == null || !watchedShows.contains(imdb) || calendarHidden.contains(imdb)) continue;
             // Once it has aired it moves to Continue Watching; Upcoming keeps only what is still to come.
             if (aired <= now || !seen.add(imdb)) continue;
             Catalog.Item it = base(show, imdb, false);
