@@ -55,11 +55,15 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
 **Details pages**
 - Play or Resume (`Resume S02E05`) straight in your player, and a Trailer button.
-- Seasons and episodes with watched checkmarks and progress, cast, and related titles that preview in the header.
+- Seasons and episodes with watched checkmarks and progress, cast (actor and character), and related titles that preview in the header.
 - A season ratings chart: every episode's IMDb rating, coloured from weak to great.
 
 **Grids**
+- Back from a title, search results and grids return to the same card.
 - Show more on any row opens a full grid, with filters: hide watched, several genres, single years or a range, and sort.
+
+**Search**
+- Movies, shows and Trakt lists as you type, by voice, and your last five searches while the box is empty.
 
 **Tracking**
 - Trakt, Simkl, MDBList or your Nuvio account, chosen in Settings, like in Nuvio.
@@ -110,7 +114,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.3.1.apk
+   adb install Akari-0.3.2.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does

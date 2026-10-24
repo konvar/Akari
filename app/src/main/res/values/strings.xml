@@ -38,6 +38,8 @@
     <string name="movies">Movies</string>
     <string name="shows">Shows</string>
     <string name="app_move_hint">Move the app with Left and Right. Press OK when done.</string>
+    <string name="recent_searches">Recent searches</string>
+    <string name="search_again">Search again</string>
     <string name="content_error">Couldn’t load movies and shows. Check the connection.</string>
     <string name="type_movie">Movie</string>
     <string name="type_series">TV show</string>

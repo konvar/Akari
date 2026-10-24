@@ -110,6 +110,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
                     return true;
                 }
                 search(query.getText().toString());
+                remember(query.getText().toString());
                 hideKeyboard();
                 results.post(() -> results.requestFocus());
                 return true;
@@ -121,6 +122,16 @@ public class SearchActivity extends Activity implements Rows.Listener {
         findViewById(R.id.micButton).setOnClickListener(v ->
                 Toast.makeText(this, R.string.voice_hold_hint, Toast.LENGTH_LONG).show());
 
+        String saved = savedInstanceState != null ? savedInstanceState.getString("query") : null;
+        if (saved != null && !saved.isEmpty()) {
+            // Back from a title: the same results, with the same card focused, and no keyboard.
+            restoreRow = savedInstanceState.getInt("row", -1);
+            restoreCard = savedInstanceState.getInt("card", 0);
+            query.setText(saved);
+            query.removeCallbacks(runSearch);
+            search(saved);
+            return;
+        }
         String initial = getIntent().getStringExtra("query");
         if (initial != null && VoicePlay.handle(this, initial)) {
             finish();
@@ -130,6 +141,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
             query.setText(initial);
             query.setSelection(initial.length());
         } else {
+            showHistory();
             query.requestFocus();
             query.postDelayed(this::showKeyboard, 250);
         }
@@ -185,7 +197,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
         lastQuery = q;
         int gen = ++generation;
         if (q.length() < 2) {
-            adapter.setRows(new ArrayList<>());
+            showHistory();
             status.setText(R.string.search_prompt);
             return;
         }
@@ -212,6 +224,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
                 for (Rows.Row r : found) if (r != null) rows.add(r);
                 adapter.setRows(rows);
                 if (pending[0] > 0) return;
+                restoreFocus(rows.size());
                 status.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
                 if (rows.isEmpty()) status.setText(getString(R.string.no_results, q));
             });
@@ -234,6 +247,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
                     for (Rows.Row r : found) if (r != null) rows.add(r);
                     adapter.setRows(rows);
                     if (pending[0] > 0) return;
+                    restoreFocus(rows.size());
                     if (!rows.isEmpty()) status.setText(null);
                     else status.setText(failed[0] ? getString(R.string.search_error) : getString(R.string.no_results, q));
                     status.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
@@ -243,17 +257,90 @@ public class SearchActivity extends Activity implements Rows.Listener {
         status.setVisibility(View.VISIBLE);
     }
 
+    /** The card focused when a title was opened, to focus again when the page comes back. */
+    private int focusRow = -1, focusCard;
+    private int restoreRow = -1, restoreCard;
+
+    @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putString("query", lastQuery);
+        out.putInt("row", focusRow);
+        out.putInt("card", focusCard);
+    }
+
+    /** Once the results are back after the page was rebuilt, focus the card that was open. */
+    private void restoreFocus(int rowCount) {
+        if (restoreRow < 0 || restoreRow >= rowCount) return;
+        int row = restoreRow, card = restoreCard;
+        restoreRow = -1;
+        results.post(() -> {
+            Rows.scrollRowToTop(results, row);
+            Rows.focusRow(results, row, card);
+        });
+    }
+
     @Override
     public void onItemFocused(Object item, int row) {
+        if (row >= 0 && adapter.get(row) != null) {
+            focusRow = row;
+            focusCard = adapter.get(row).lastFocus;
+        }
         if (item instanceof Catalog.Item && !"list".equals(((Catalog.Item) item).type)) {
             ambient.fromCache(((Catalog.Item) item).poster + '@' + Rows.px(this, 100));
         }
         if (row >= 0) Rows.scrollRowToTop(results, row);
     }
 
+    // ---- Recent searches: the last five, shown while the box is empty ----
+
+    private static final int HISTORY = 5;
+
+    private List<String> history() {
+        String s = getSharedPreferences("search", MODE_PRIVATE).getString("history", "");
+        List<String> out = new ArrayList<>();
+        for (String q : s.split("\n")) if (!q.trim().isEmpty()) out.add(q);
+        return out;
+    }
+
+    private void remember(String q) {
+        q = q.trim();
+        if (q.length() < 2) return;
+        List<String> h = history();
+        for (int i = h.size() - 1; i >= 0; i--) if (h.get(i).equalsIgnoreCase(q)) h.remove(i);
+        h.add(0, q);
+        while (h.size() > HISTORY) h.remove(h.size() - 1);
+        getSharedPreferences("search", MODE_PRIVATE).edit().putString("history", String.join("\n", h)).apply();
+    }
+
+    private void showHistory() {
+        List<Catalog.Item> cards = new ArrayList<>();
+        for (String q : history()) {
+            Catalog.Item it = new Catalog.Item();
+            it.type = "list";
+            it.kind = "recent";
+            it.name = q;
+            it.subtitle = getString(R.string.search_again);
+            cards.add(it);
+        }
+        List<Rows.Row> rows = new ArrayList<>();
+        if (!cards.isEmpty()) rows.add(new Rows.Row(getString(R.string.recent_searches), cards));
+        adapter.setRows(rows);
+    }
+
     @Override
     public void onItemClicked(Object item) {
         if (!(item instanceof Catalog.Item)) return;
+        Catalog.Item picked = (Catalog.Item) item;
+        if ("recent".equals(picked.kind)) {
+            query.setText(picked.name);
+            query.setSelection(picked.name.length());
+            query.removeCallbacks(runSearch);
+            search(picked.name);
+            results.postDelayed(() -> results.requestFocus(), 400);
+            return;
+        }
+        remember(lastQuery);
         if (GridActivity.open(this, (Catalog.Item) item)) return;
         try {
             startActivity(Catalog.openIntent(this, (Catalog.Item) item));

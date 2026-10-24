@@ -438,7 +438,18 @@ final class Rows {
                     return;
                 }
                 if ("person".equals(it.type)) {
-                    h.subtitle.setText(it.subtitle);
+                    // The actor's name, and the character under it in a dimmer, smaller line.
+                    String name = it.name != null ? it.name : "";
+                    String role = it.subtitle != null ? it.subtitle : "";
+                    android.text.SpannableStringBuilder text = new android.text.SpannableStringBuilder(name);
+                    text.setSpan(new android.text.style.ForegroundColorSpan(0xFFFFFFFF), 0, name.length(), 0);
+                    if (!role.isEmpty()) {
+                        int at = text.length();
+                        text.append(name.isEmpty() ? "" : "\n").append(role);
+                        text.setSpan(new android.text.style.RelativeSizeSpan(0.9f), at, text.length(), 0);
+                        text.setSpan(new android.text.style.ForegroundColorSpan(0x99FFFFFF), at, text.length(), 0);
+                    }
+                    h.subtitle.setText(text);
                     ImageLoader.load(h.image, it.poster, px(c, 96), px(c, 96));
                     return;
                 }

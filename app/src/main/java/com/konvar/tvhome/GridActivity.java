@@ -113,7 +113,28 @@ public class GridActivity extends Activity {
         grid.setAdapter(adapter);
         // Every grid of titles gets the filters; the grid of lists has nothing to filter.
         if (!lists) buildFilters();
+        if (savedInstanceState != null) restorePos = savedInstanceState.getInt("focus", -1);
         loadMore();
+    }
+
+    /** The title focused when one was opened; the page loads as far as it to focus it again. */
+    private int restorePos = -1;
+
+    @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        RecyclerView grid = findViewById(R.id.grid);
+        View f = grid.getFocusedChild();
+        out.putInt("focus", f != null ? grid.getChildAdapterPosition(f) : -1);
+    }
+
+    private void focusAt(int pos) {
+        RecyclerView grid = findViewById(R.id.grid);
+        grid.scrollToPosition(pos);
+        grid.post(() -> {
+            RecyclerView.ViewHolder h = grid.findViewHolderForAdapterPosition(pos);
+            if (h != null) h.itemView.requestFocus();
+        });
     }
 
     @Override
@@ -160,6 +181,11 @@ public class GridActivity extends Activity {
                 loading = false;
                 if (result == null || result.isEmpty()) {
                     done = true;
+                    // The list ended before the title that was open: focus its last one.
+                    if (restorePos >= 0 && !items.isEmpty()) {
+                        restorePos = -1;
+                        focusAt(items.size() - 1);
+                    }
                     return;
                 }
                 page = next;
@@ -173,12 +199,17 @@ public class GridActivity extends Activity {
                     items.addAll(result);
                     adapter.notifyItemRangeInserted(start, result.size());
                 }
-                if (start == 0 && !items.isEmpty()) {
-                    RecyclerView grid = findViewById(R.id.grid);
-                    grid.post(() -> {
-                        RecyclerView.ViewHolder h = grid.findViewHolderForAdapterPosition(0);
-                        if (h != null) h.itemView.requestFocus();
-                    });
+                if (restorePos >= 0) {
+                    // Load pages until the title that was open is in the grid (or the list ends), then focus it.
+                    if (restorePos < items.size() || done) {
+                        int pos = Math.min(restorePos, items.size() - 1);
+                        restorePos = -1;
+                        if (pos >= 0) focusAt(pos);
+                    } else {
+                        Net.MAIN.post(this::loadMore);
+                    }
+                } else if (start == 0 && !items.isEmpty()) {
+                    focusAt(0);
                 }
             });
         });
@@ -326,9 +357,24 @@ public class GridActivity extends Activity {
         else if (sort == 2) out.sort((a, b) -> Integer.compare(yearOf(a) == 0 ? 9999 : yearOf(a), yearOf(b) == 0 ? 9999 : yearOf(b)));
         else if (sort == 3) out.sort((a, b) -> Double.compare(ratingOf(b), ratingOf(a)));
         else if (sort == 4) out.sort((a, b) -> String.valueOf(a.name).compareToIgnoreCase(String.valueOf(b.name)));
-        items.clear();
-        items.addAll(out);
-        adapter.notifyDataSetChanged();
+        RecyclerView grid = findViewById(R.id.grid);
+        View f = grid.getFocusedChild();
+        int fp = f != null ? grid.getChildAdapterPosition(f) : RecyclerView.NO_POSITION;
+        Catalog.Item focused = fp >= 0 && fp < items.size() ? items.get(fp) : null;
+        if (out.size() >= items.size() && out.subList(0, items.size()).equals(items)) {
+            // A new page under the same filters only adds titles at the end: no redraw, so focus stays put.
+            int start = items.size();
+            items.addAll(out.subList(start, out.size()));
+            adapter.notifyItemRangeInserted(start, out.size() - start);
+        } else {
+            items.clear();
+            items.addAll(out);
+            adapter.notifyDataSetChanged();
+            // Keep focus on the same title (it may have moved), not on the filter buttons.
+            int at = focused != null ? items.indexOf(focused) : -1;
+            if (at >= 0) focusAt(at);
+            else if (f != null && !items.isEmpty()) focusAt(Math.min(fp, items.size() - 1));
+        }
         TextView title = findViewById(R.id.gridTitle);
         title.setText(filtering() ? baseTitle + "  ·  " + out.size() + " of " + all.size() + (done ? "" : "+") : baseTitle);
     }
