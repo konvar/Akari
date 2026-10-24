@@ -22,6 +22,9 @@ final class ImageLoader {
         }
     };
 
+    /** Pictures the server does not have (HTTP 404), and when that was found; tried again after six hours. */
+    private static final java.util.Map<String, Long> FAILED = new java.util.concurrent.ConcurrentHashMap<>();
+
     private ImageLoader() {
     }
 
@@ -47,6 +50,14 @@ final class ImageLoader {
             if (done != null) done.run();
             return;
         }
+        // A picture that does not exist (an episode still not made yet): go straight to the fallback instead of
+        // blanking the card and asking again on every redraw, which made it flicker.
+        Long failedAt = FAILED.get(url);
+        if (failedAt != null && android.os.SystemClock.elapsedRealtime() - failedAt < 6 * 3600 * 1000L) {
+            view.setImageDrawable(null);
+            if (done != null) done.run();
+            return;
+        }
         view.setImageDrawable(null);
         Net.IMAGES.execute(() -> {
             // Skip downloads for tiles that scrolled away before their turn came.
@@ -56,6 +67,7 @@ final class ImageLoader {
                 bmp = decode(read(view.getContext(), url), width, height, alpha);
             } catch (IOException | RuntimeException | OutOfMemoryError e) {
                 android.util.Log.w("TvHomeImages", "failed " + url + ": " + e);
+                if (e instanceof java.io.FileNotFoundException) FAILED.put(url, android.os.SystemClock.elapsedRealtime());
             }
             Bitmap result = bmp;
             Net.MAIN.post(() -> {

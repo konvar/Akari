@@ -31,6 +31,33 @@
     <!-- Stremio catalog addon the home rows and search come from. Cinemeta is public and needs no account. -->
     <string name="addon_url" translatable="false">https://v3-cinemeta.strem.io</string>
 
+    <!-- Home's row order and switched-off rows until they are changed in Settings → Home rows. -->
+    <string-array name="default_row_order" translatable="false">
+        <item>Your apps</item>
+        <item>Continue watching</item>
+        <item>Upcoming</item>
+        <item>Trending movies</item>
+        <item>Trending shows</item>
+        <item>Popular movies</item>
+        <item>Popular shows</item>
+        <item>Box office</item>
+        <item>Most watched this week</item>
+        <item>Most watched shows this week</item>
+        <item>Most anticipated movies</item>
+        <item>Most anticipated shows</item>
+        <item>Popular lists</item>
+        <item>For you</item>
+        <item>Watchlist</item>
+    </string-array>
+    <string-array name="default_hidden_rows" translatable="false">
+        <item>Airing tonight</item>
+        <item>Most watched this week</item>
+        <item>Most watched shows this week</item>
+        <item>Most anticipated movies</item>
+        <item>Most anticipated shows</item>
+        <item>Popular lists</item>
+    </string-array>
+
     <!-- Home rows under "Your apps", as "Title|type|Trakt list|Cinemeta catalog". The Trakt list
          (trending, popular, anticipated, watched/weekly, boxoffice) is used first; the Cinemeta catalog
          from the addon's manifest is the fallback when Trakt does not answer. -->

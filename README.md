@@ -34,13 +34,16 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - Continue Watching with time left (`23m left`), `New episode` and `Up next` badges.
 - Upcoming episodes of the shows you follow, with a live countdown before they air (style and timing configurable).
 - Content rows: trending, popular, box office, most watched, most anticipated, popular lists, and Airing tonight.
-- Your apps, with the ones you choose first.
+- Your apps, in the order you want: hold OK on an app, move it with Left and Right, and press OK to put it down.
 - Checkmarks on everything you have watched; Hide watched in every grid.
 - Your own ratings in the corner of every poster, season and episode, as the old Trakt website showed them: a folded
   corner from grey (1) to red (10), from Trakt, Simkl or MDBList.
 - Clock and weather (automatic location or a town you choose); both can be hidden.
 - The buttons in the top bar adapt to the picture behind them, so they stay readable on bright artwork.
 - Everything next to the focused card is fetched ahead, so artwork, logos and ratings appear instantly.
+- Rows refresh as soon as the TV wakes up or comes online, and keep what they show while the connection returns. A
+  small note at the bottom says what changed (`Continue watching: 2 new · Upcoming updated`), and new cards are
+  marked `New` for a minute.
 - Optional trailer behind the hero: after a few seconds on a title (2-10 s, your choice), its trailer plays muted or
   with sound, blended into the page like the backdrop. IMDb's own trailer first (no ads, no extra player); YouTube as a
   backup, shown only once the trailer itself plays. Neighbouring trailers are looked up ahead; Wi-Fi or Ethernet only.
@@ -76,7 +79,8 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - Choose the player in Settings → Playback; Continue Watching, Upcoming, voice and details pages all use it.
 
 **Settings**
-- Row order and visibility, the row focused when the TV starts, player app, trailer app, remote buttons, tracking
+- Row order and visibility (by default: Your apps, Continue watching, Upcoming, then trending, popular and box
+  office rows; the others can be switched on), the row focused when the TV starts, player app, trailer app, remote buttons, tracking
   provider, weather, and API keys entered from your phone with a QR code.
 
 ## Screenshots
@@ -106,7 +110,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.2.0.apk
+   adb install Akari-0.3.0.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does

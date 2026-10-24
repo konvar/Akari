@@ -195,6 +195,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         loadContent();
         loadWeather();
         EpisodeJob.schedule(this);
+        watchNetworkAndWake();
     }
 
     @Override
@@ -260,6 +261,12 @@ public class MainActivity extends Activity implements Rows.Listener {
 
     @Override
     protected void onDestroy() {
+        try {
+            unregisterReceiver(screenOn);
+            android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
+            if (cm != null && networkBack != null) cm.unregisterNetworkCallback(networkBack);
+        } catch (RuntimeException ignored) {
+        }
         unregisterReceiver(packageReceiver);
         getContentResolver().unregisterContentObserver(channelObserver);
         HttpResponseCache cache = HttpResponseCache.getInstalled();
@@ -333,8 +340,23 @@ public class MainActivity extends Activity implements Rows.Listener {
             cards.postDelayed(() -> {
                 View first = cards.getLayoutManager() != null ? cards.getLayoutManager().findViewByPosition(0) : null;
                 if (first != null) first.requestFocus();
+                syncHeroToFocus();
             }, 50);
         }, 50);
+    }
+
+    /**
+     * Home puts focus on its start row; if that card already had focus no focus change fires, so the hero would
+     * keep the last title watched. Match the hero to the card that really has focus.
+     */
+    private void syncHeroToFocus() {
+        rowList.post(() -> {
+            Object item = Rows.itemFor(getCurrentFocus());
+            if (item == null || (item == heroItem && !(item instanceof Apps.Entry))) return;
+            heroItem = item;
+            heroImage.removeCallbacks(showHero);
+            bindHero();
+        });
     }
 
     private void installHttpCache() {
@@ -345,7 +367,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         }
     }
 
-    private void reloadApps() {
+    void reloadApps() {
         Net.IO.execute(() -> {
             List<Apps.Entry> loaded = Apps.load(getApplicationContext());
             Net.MAIN.post(() -> {
@@ -374,6 +396,8 @@ public class MainActivity extends Activity implements Rows.Listener {
     private Weather.Report weather;
     private long weatherLoadedAt;
     private boolean channelsLoading;
+    private long channelsLoadingAt;
+    private int contentRetries;
 
     /**
      * Continue Watching: from Trakt when signed in (always current, what Nuvio syncs to), otherwise Nuvio's own
@@ -416,11 +440,20 @@ public class MainActivity extends Activity implements Rows.Listener {
     }
 
     private void loadChannels() {
+        loadChannels(false);
+    }
+
+    /**
+     * Continue Watching, Upcoming and the lists. {@code now}: reload at once (network back, TV awake), skipping the
+     * one-minute rule. A load that has hung for more than 90 seconds no longer blocks a new one.
+     */
+    private void loadChannels(boolean now) {
         String pkg = Player.pkg(this);
         Context app = getApplicationContext();
-        if (Trakt.signedIn(this) && SystemClock.elapsedRealtime() - traktLoadedAt < 60_000 && !channelRows.isEmpty()) return;
-        if (channelsLoading) return;
+        if (!now && Trakt.signedIn(this) && SystemClock.elapsedRealtime() - traktLoadedAt < 60_000 && !channelRows.isEmpty()) return;
+        if (channelsLoading && SystemClock.elapsedRealtime() - channelsLoadingAt < 90_000) return;
         channelsLoading = true;
+        channelsLoadingAt = SystemClock.elapsedRealtime();
         Net.API.execute(() -> {
             List<Rows.Row> rows = new ArrayList<>();
             List<Catalog.Item> trakt = null;
@@ -488,6 +521,14 @@ public class MainActivity extends Activity implements Rows.Listener {
                 tailChanged = !sameTitles(tail, tailRows);
                 tailRows = tail;
                 RowCache.save(app, "tail", tail);
+            } else if (!Tracking.NONE.equals(provider)) {
+                // The provider did not answer (no network yet, at start or after standby): keep the rows on screen,
+                // with their badges, and try again shortly.
+                Net.MAIN.post(() -> {
+                    channelsLoading = false;
+                    Net.MAIN.postDelayed(() -> loadChannels(true), 15_000);
+                });
+                return;
             } else {
                 rows.addAll(Channels.load(app, pkg));
                 if (Trakt.configured() && !Trakt.signedIn(app)) {
@@ -515,10 +556,110 @@ public class MainActivity extends Activity implements Rows.Listener {
                     if (badgesChanged) adapter.notifyDataSetChanged();
                     return;
                 }
+                announceChanges(channelRows, rows);
                 channelRows = rows;
                 publishRows();
             });
         });
+    }
+
+    /**
+     * A small pill at the bottom of Home when a refresh brought something new: "Continue Watching: 2 new ·
+     * Upcoming updated". The new cards keep a "New" mark for a minute.
+     */
+    private void announceChanges(List<Rows.Row> before, List<Rows.Row> after) {
+        if (before == null || before.isEmpty()) return;
+        java.util.Map<String, java.util.Set<String>> old = new java.util.HashMap<>();
+        for (Rows.Row r : before) old.put(r.title, keysOf(r));
+        List<String> parts = new ArrayList<>();
+        for (Rows.Row r : after) {
+            java.util.Set<String> was = old.get(r.title);
+            if (was == null) continue;
+            int added = 0;
+            for (Object o : r.items) {
+                String k = o instanceof Catalog.Item ? cardKey((Catalog.Item) o) : null;
+                if (k != null && !was.contains(k)) {
+                    added++;
+                    Rows.fresh(k);
+                }
+            }
+            if (added > 0) parts.add(r.title + ": " + added + " new");
+            else if (!was.equals(keysOf(r))) parts.add(r.title + " updated");
+        }
+        if (parts.isEmpty()) return;
+        showPill(String.join("  \u00b7  ", parts));
+    }
+
+    private static java.util.Set<String> keysOf(Rows.Row r) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (Object o : r.items) if (o instanceof Catalog.Item) out.add(cardKey((Catalog.Item) o));
+        return out;
+    }
+
+    static String cardKey(Catalog.Item it) {
+        return it.type + ":" + it.id + ":" + it.season + ":" + it.episode;
+    }
+
+    private TextView pill;
+
+    private void showPill(String text) {
+        if (pill == null) {
+            pill = new TextView(this);
+            pill.setTextColor(0xFFFFFFFF);
+            pill.setTextSize(14);
+            pill.setTypeface(getResources().getFont(R.font.outfit));
+            pill.setFontVariationSettings("'wght' 500");
+            int h = Rows.px(this, 18), v = Rows.px(this, 9);
+            pill.setPadding(h, v, h, v);
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setCornerRadius(Rows.px(this, 40));
+            bg.setColor(0xD9202228);
+            bg.setStroke(Rows.px(this, 1), 0x33FFFFFF);
+            pill.setBackground(bg);
+            pill.setAlpha(0f);
+            android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(-2, -2,
+                    android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+            lp.bottomMargin = Rows.px(this, 28);
+            ((android.widget.FrameLayout) findViewById(R.id.root)).addView(pill, lp);
+        }
+        pill.setText("\u21bb  " + text);
+        pill.removeCallbacks(hidePill);
+        fade(pill, 1f, 300);
+        pill.postDelayed(hidePill, 5000);
+    }
+
+    private final Runnable hidePill = () -> fade(pill, 0f, 500);
+
+    /** Network back, or the TV awake again: reload at once instead of waiting for the next check. */
+    private android.net.ConnectivityManager.NetworkCallback networkBack;
+    private final android.content.BroadcastReceiver screenOn = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            loadChannels(true);
+        }
+    };
+
+    private void watchNetworkAndWake() {
+        android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
+        if (cm != null) {
+            networkBack = new android.net.ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(android.net.Network n) {
+                    Net.MAIN.post(() -> {
+                        loadChannels(true);
+                        if (contentRows.isEmpty()) {
+                            contentRetries = 0;
+                            loadContent();
+                        }
+                    });
+                }
+            };
+            try {
+                cm.registerDefaultNetworkCallback(networkBack);
+            } catch (RuntimeException ignored) {
+            }
+        }
+        registerReceiver(screenOn, new android.content.IntentFilter(Intent.ACTION_SCREEN_ON));
     }
 
     private volatile boolean tailChanged;
@@ -616,9 +757,13 @@ public class MainActivity extends Activity implements Rows.Listener {
                     List<Rows.Row> rows = new ArrayList<>();
                     for (Rows.Row r : loaded) if (r != null) rows.add(r);
                     if (rows.isEmpty() && failed[0]) {
-                        Toast.makeText(this, R.string.content_error, Toast.LENGTH_LONG).show();
+                        // Usually the TV is not online yet (just started or woke up): retry quietly, and only
+                        // complain after about two minutes. A returning network reloads at once.
+                        if (++contentRetries <= 8) Net.MAIN.postDelayed(this::loadContent, 15_000);
+                        else Toast.makeText(this, R.string.content_error, Toast.LENGTH_LONG).show();
                         return;
                     }
+                    contentRetries = 0;
                     Net.API.execute(() -> RowCache.save(getApplicationContext(), "content", rows));
                     if (sameRows(rows, contentRows)) {
                         contentLoadedAt = SystemClock.elapsedRealtime();
@@ -724,6 +869,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             focusedRow = r;
             Rows.scrollRowToTop(rowList, r);
             Rows.focusRow(rowList, r, card);
+            syncHeroToFocus();
             return;
         }
         goToTop();

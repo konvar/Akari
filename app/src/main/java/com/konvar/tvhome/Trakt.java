@@ -358,7 +358,6 @@ final class Trakt {
         java.util.concurrent.Future<JSONArray> watchedMovies = POOL.submit(() -> getAllParallel("/sync/watched/movies", token));
         java.util.concurrent.Future<JSONArray> watchedShowsF = POOL.submit(() -> getAllParallel("/sync/watched/shows?extended=full", token));
         java.util.concurrent.Future<Set<String>> hiddenF = POOL.submit(() -> loadHidden(token));
-        POOL.submit(() -> loadMyRatings(c, token));
 
         List<Catalog.Item> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -428,7 +427,7 @@ final class Trakt {
                 String cached = cache.getString(key, null);
                 if (cached != null) {
                     JSONObject entry = new JSONObject(cached);
-                    if (lastWatched.equals(entry.optString("last")) && now - entry.optLong("at") < 6 * 3600 * 1000L) {
+                    if (lastWatched.equals(entry.optString("last")) && now - entry.optLong("at") < 24 * 3600 * 1000L) {
                         progress = entry.optJSONObject("progress");
                     }
                 }
@@ -474,6 +473,8 @@ final class Trakt {
         items.sort((a, b) -> Long.compare(b.order, a.order));
         // Like Nuvio: only what was watched within the Continue Watching window (Settings → Tracking).
         items = Tracking.withinWindow(c, items);
+        // Your ratings after Continue Watching, so they do not compete with it for the connection.
+        POOL.submit(() -> loadMyRatings(c, token));
         fillThumbs(c, items, token);
         lastContinueWatching = items;
         Log.i(TAG, "continue watching: " + items.size() + " items, " + watchedIds.size() + " watched, "

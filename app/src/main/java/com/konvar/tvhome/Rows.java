@@ -115,6 +115,18 @@ final class Rows {
         });
     }
 
+    /** Cards that a refresh just added: marked "New" for a minute. */
+    private static final java.util.Map<String, Long> FRESH = new java.util.concurrent.ConcurrentHashMap<>();
+
+    static void fresh(String key) {
+        FRESH.put(key, android.os.SystemClock.elapsedRealtime());
+    }
+
+    static boolean isFresh(String key) {
+        Long at = FRESH.get(key);
+        return at != null && android.os.SystemClock.elapsedRealtime() - at < 60_000;
+    }
+
     static final class RowAdapter extends RecyclerView.Adapter<RowAdapter.Holder> {
         private final List<Row> rows = new ArrayList<>();
         private final Listener listener;
@@ -246,6 +258,90 @@ final class Rows {
         static final int PERSON = 6;
         static final int SEASON = 7;
 
+        /** The app tile being moved (hold OK on an app), and whether OK was pressed again since it was picked up. */
+        static Object moving;
+        private static boolean okDown;
+
+        /**
+         * The look of an app tile, drawn from the row's state on every bind: the lifted tile is bigger, raised and
+         * outlined; every other tile is plain, or enlarged only when it really has focus. Views are reused while the
+         * row scrolls, so the look must never be left on a view by hand.
+         */
+        static void styleApp(View v, boolean lifted) {
+            float scale = lifted ? 1.3f : v.isFocused() ? 1.1f : 1f;
+            v.animate().cancel();
+            v.setScaleX(scale);
+            v.setScaleY(scale);
+            v.setTranslationZ(lifted ? 30f : v.isFocused() ? 12f : 0f);
+            if (lifted) {
+                android.graphics.drawable.GradientDrawable ring = new android.graphics.drawable.GradientDrawable();
+                ring.setCornerRadius(px(v.getContext(), 12));
+                ring.setStroke(px(v.getContext(), 3), 0xFFFFFFFF);
+                v.setForeground(ring);
+            } else if (!(v.getForeground() instanceof android.graphics.drawable.StateListDrawable)) {
+                v.setForeground(v.getContext().getDrawable(R.drawable.card_focus));
+            }
+        }
+
+        static void pickUp(View v, CardAdapter a, Object app) {
+            moving = app;
+            okDown = false;
+            styleApp(v, true);
+            android.widget.Toast.makeText(v.getContext(), R.string.app_move_hint, android.widget.Toast.LENGTH_LONG).show();
+        }
+
+        private static void putDown(RecyclerView cards, CardAdapter a) {
+            int at = a.row.items.indexOf(moving);
+            moving = null;
+            a.notifyItemChanged(at);
+            Apps.saveOrder(cards.getContext(), a.row.items);
+            if (cards.getContext() instanceof MainActivity) ((MainActivity) cards.getContext()).reloadApps();
+        }
+
+        /** Focus the tile at {@code pos} once the row has laid out the move. */
+        private static void focusAt(RecyclerView cards, int pos) {
+            cards.scrollToPosition(pos);
+            cards.post(() -> {
+                RecyclerView.ViewHolder h = cards.findViewHolderForAdapterPosition(pos);
+                if (h != null && !h.itemView.isFocused()) h.itemView.requestFocus();
+            });
+        }
+
+        /** While moving an app: Left / Right move it one place, OK or Back put it down and save the order. */
+        static boolean moveKey(View v, CardAdapter a, int keyCode, android.view.KeyEvent event) {
+            if (!(v.getParent() instanceof RecyclerView)) return true;
+            RecyclerView cards = (RecyclerView) v.getParent();
+            int p = a.row.items.indexOf(moving);
+            boolean down = event.getAction() == android.view.KeyEvent.ACTION_DOWN;
+            switch (keyCode) {
+                case android.view.KeyEvent.KEYCODE_DPAD_LEFT:
+                case android.view.KeyEvent.KEYCODE_DPAD_RIGHT: {
+                    // One place per press; a held button moves on slowly (every third repeat), never runs away.
+                    if (!down || event.getRepeatCount() % 3 != 0 || cards.isComputingLayout()) return true;
+                    int to = p + (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                    if (p < 0 || to < 0 || to >= a.row.items.size()) return true;
+                    java.util.Collections.swap(a.row.items, p, to);
+                    a.notifyItemMoved(p, to);
+                    a.row.lastFocus = to;
+                    focusAt(cards, to);
+                    return true;
+                }
+                case android.view.KeyEvent.KEYCODE_DPAD_CENTER:
+                case android.view.KeyEvent.KEYCODE_ENTER:
+                case android.view.KeyEvent.KEYCODE_BACK:
+                    // The release of the hold that picked the app up is not a drop, nor are the hold's repeats:
+                    // only a fresh press, then its release, puts the app down.
+                    if (down && event.getRepeatCount() == 0) okDown = true;
+                    else if (!down && okDown) putDown(cards, a);
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_UP:
+                case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         private Row row;
         private final Listener listener;
         private final RecyclerView.ViewHolder rowHolder;
@@ -254,6 +350,8 @@ final class Rows {
         @Override
         public long getItemId(int position) {
             Object o = row.items.get(position);
+            // An app is in the row once: its id follows the app, so a moved tile keeps its view and its focus.
+            if (o instanceof Apps.Entry) return ((Apps.Entry) o).pkg.hashCode();
             String key = o instanceof Catalog.Item ? ((Catalog.Item) o).type + ":" + ((Catalog.Item) o).id + ":"
                     + ((Catalog.Item) o).season + ":" + ((Catalog.Item) o).episode
                     : o instanceof Apps.Entry ? ((Apps.Entry) o).pkg : String.valueOf(position);
@@ -304,6 +402,7 @@ final class Rows {
                 h.label.setText(e.label);
                 h.label.setVisibility(e.hasBanner ? View.GONE : View.VISIBLE);
                 Apps.loadArt(h.image, e, px(c, 160), px(c, 90));
+                styleApp(h.itemView, e == moving);
             } else {
                 Catalog.Item it = (Catalog.Item) item;
                 // Your own Trakt rating in the top-right corner; the watched check moves to the left beside it.
@@ -374,6 +473,11 @@ final class Rows {
         }
 
         static String cwBadge(Catalog.Item it) {
+            String text = cwBadgeText(it);
+            return isFresh(MainActivity.cardKey(it)) ? (text != null ? "New  \u00b7  " + text : "New") : text;
+        }
+
+        static String cwBadgeText(Catalog.Item it) {
             if (it.progress > 0) {
                 if (it.runtime > 0) {
                     int left = Math.max(1, Math.round(it.runtime * (100 - it.progress) / 100f));
@@ -515,13 +619,19 @@ final class Rows {
                     int p = getBindingAdapterPosition();
                     if (a == null || p == RecyclerView.NO_POSITION) return false;
                     Object item = a.row.items.get(p);
+                    if (item instanceof Apps.Entry) {
+                        // Hold OK on an app: move it with Left / Right, OK or Back when done.
+                        pickUp(x, a, item);
+                        return true;
+                    }
                     if (item instanceof Catalog.Item && x.getContext() instanceof android.app.Activity
                             && CardMenu.show((android.app.Activity) x.getContext(), (Catalog.Item) item)) return true;
                     return DetailsActivity.open(x.getContext(), item);
                 });
                 v.setOnKeyListener((x, keyCode, event) -> {
-                    if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
                     CardAdapter a = (CardAdapter) getBindingAdapter();
+                    if (a != null && moving != null && a.row.items.contains(moving)) return moveKey(x, a, keyCode, event);
+                    if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
                     if (a == null) return false;
                     // Right on the last card stays put instead of jumping to the next row.
                     if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -534,7 +644,10 @@ final class Rows {
                 v.setOnFocusChangeListener((x, focused) -> {
                     // Only animate a real change: a card that is already enlarged does not grow again (no pulse).
                     float target = focused ? 1.1f : 1f;
-                    if (Math.abs(x.getScaleX() - target) > 0.01f) {
+                    CardAdapter ma = (CardAdapter) getBindingAdapter();
+                    int mp = getBindingAdapterPosition();
+                    boolean lifted = moving != null && ma != null && mp != RecyclerView.NO_POSITION && ma.row.items.get(mp) == moving;
+                    if (!lifted && Math.abs(x.getScaleX() - target) > 0.01f) {
                         x.animate().scaleX(target).scaleY(target).translationZ(focused ? 12f : 0f).setDuration(140).start();
                     }
                     CardAdapter a = (CardAdapter) getBindingAdapter();

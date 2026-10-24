@@ -53,12 +53,28 @@ final class Apps {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             apps.add(e);
         }
+        List<String> saved = savedOrder(c);
         Collections.sort(apps, (a, b) -> {
+            // The order you set by moving the tiles; apps installed since then go after them.
+            int sa = saved.indexOf(a.pkg), sb = saved.indexOf(b.pkg);
+            if (sa >= 0 || sb >= 0) return (sa < 0 ? Integer.MAX_VALUE : sa) - (sb < 0 ? Integer.MAX_VALUE : sb);
             int fa = favourites.indexOf(a.pkg), fb = favourites.indexOf(b.pkg);
             if (fa >= 0 || fb >= 0) return (fa < 0 ? Integer.MAX_VALUE : fa) - (fb < 0 ? Integer.MAX_VALUE : fb);
             return a.label.compareToIgnoreCase(b.label);
         });
         return apps;
+    }
+
+    private static List<String> savedOrder(Context c) {
+        String s = c.getSharedPreferences("apps", Context.MODE_PRIVATE).getString("order", "");
+        return s.isEmpty() ? new ArrayList<>() : Arrays.asList(s.split("\n"));
+    }
+
+    /** Saves the tiles' order after one was moved (hold OK on an app, then Left / Right). */
+    static void saveOrder(Context c, List<?> items) {
+        List<String> pkgs = new ArrayList<>();
+        for (Object o : items) if (o instanceof Entry) pkgs.add(((Entry) o).pkg);
+        c.getSharedPreferences("apps", Context.MODE_PRIVATE).edit().putString("order", String.join("\n", pkgs)).apply();
     }
 
     /** Draws the banner (or icon) into a bitmap the size of the tile, so no full-density drawable stays alive. */
