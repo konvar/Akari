@@ -2,7 +2,7 @@
 
 # Akari 明かり
 
-**A fast, modern home screen for Android TV and Google TV, built around what you watch.**
+**A fast, ad-free launcher for Google TV and Android TV, built around what you watch.**
 
 Continue Watching, Upcoming and your lists from Trakt, Simkl, MDBList or your Nuvio account, with logos, ratings and
 synopses in a hero at the top, and everything opening straight in your player app: Nuvio, Stremio, Wuplay or STRMR.
