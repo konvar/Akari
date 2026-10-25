@@ -60,6 +60,8 @@ synopses in a hero at the top, and everything opening straight in your player ap
   inside Akari, with sound (IMDb's own trailer first, YouTube as a backup; OK pauses).
 - Seasons and episodes with watched checkmarks and progress, cast (actor and character), and related titles that preview in the header.
 - A season ratings chart: every episode's IMDb rating, coloured from weak to great.
+- The movie's collection (for example every Dark Knight film), in release order.
+- Network and production companies as logo cards; each opens a grid of its most popular titles.
 
 **Grids**
 - Back from a title, search results and grids return to the same card.
@@ -119,7 +121,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.4.0.apk
+   adb install Akari-0.5.0.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does
@@ -202,7 +204,9 @@ Releases are built by GitHub Actions when a `v*` tag is pushed (`.github/workflo
 
 - **More player apps.** Nuvio, Stremio, Wuplay and STRMR work today. Other apps that open movies and shows by IMDb or
   TMDB id can be added the same way.
-- More rows from TMDB: recommendations, collections, networks and streaming services.
+- **Home rows from TMDB:** recommendations based on what you watch, and rows per streaming service.
+- **Calendar:** keep the last good calendar on screen when Trakt limits requests.
+- **Details pages without a Trakt app ID:** synopsis from Cinemeta, cast and related titles from TMDB.
 
 ## Credits
 

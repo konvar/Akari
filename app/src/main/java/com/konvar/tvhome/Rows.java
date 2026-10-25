@@ -257,6 +257,7 @@ final class Rows {
         static final int LIST = 5;
         static final int PERSON = 6;
         static final int SEASON = 7;
+        static final int COMPANY = 8;
 
         /** The app tile being moved (hold OK on an app), and whether OK was pressed again since it was picked up. */
         static Object moving;
@@ -380,6 +381,7 @@ final class Rows {
             if ("list".equals(it.type)) return LIST;
             if ("person".equals(it.type)) return PERSON;
             if ("season".equals(it.type)) return SEASON;
+            if ("company".equals(it.type)) return COMPANY;
             return it.launch != null ? WIDE : POSTER;
         }
 
@@ -389,6 +391,7 @@ final class Rows {
             int layout = viewType == APP ? R.layout.card_app : viewType == WIDE ? R.layout.card_wide
                     : viewType == MORE ? R.layout.card_more : viewType == LIST ? R.layout.card_list
                     : viewType == PERSON ? R.layout.card_person : viewType == SEASON ? R.layout.card_season
+                    : viewType == COMPANY ? R.layout.card_company
                     : R.layout.card_poster;
             return new Holder(LayoutInflater.from(parent.getContext()).inflate(layout, parent, false));
         }
@@ -436,6 +439,15 @@ final class Rows {
                 if ("season".equals(it.type)) {
                     h.subtitle.setText(it.subtitle);
                     h.check.setVisibility(it.watched ? View.VISIBLE : View.GONE);
+                    return;
+                }
+                if ("company".equals(it.type)) {
+                    // The logo, or the name in grey when TMDB has no logo (or it fails to load).
+                    h.label.setText(it.name);
+                    h.label.setVisibility(it.poster == null ? View.VISIBLE : View.GONE);
+                    ImageLoader.load(h.image, it.poster, px(c, 112), px(c, 44), true, () -> {
+                        if (h.image.getDrawable() == null) h.label.setVisibility(View.VISIBLE);
+                    });
                     return;
                 }
                 if ("person".equals(it.type)) {

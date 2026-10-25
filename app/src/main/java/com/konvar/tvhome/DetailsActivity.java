@@ -170,6 +170,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
                 }
             }
             String trailerKey = Tmdb.trailer(item.id, !"series".equals(item.type));
+            Tmdb.Extras extras = Tmdb.extras(item.id, !"series".equals(item.type));
             android.util.Log.i("TvHomeDetails", item.id + " ready in " + (android.os.SystemClock.elapsedRealtime() - started) + " ms");
             Trakt.Details result = d;
             Net.MAIN.post(() -> {
@@ -231,7 +232,15 @@ public class DetailsActivity extends Activity implements Rows.Listener {
                     list.get(0).lastFocus = new ArrayList<>(seasons.keySet()).indexOf(s);
                 }
                 if (!result.cast.isEmpty()) list.add(new Rows.Row(getString(R.string.cast), result.cast));
+                // The movie's collection (named after it, in release order), as in Nuvio, before related titles.
+                if (extras.collection.size() > 1) {
+                    list.add(new Rows.Row(extras.collectionName != null ? extras.collectionName : getString(R.string.collection),
+                            extras.collection));
+                }
                 if (!result.related.isEmpty()) list.add(new Rows.Row(getString(R.string.related), result.related));
+                // Network and production companies: logos on white cards that open their titles.
+                if (!extras.networks.isEmpty()) list.add(new Rows.Row(getString(R.string.network), extras.networks));
+                if (!extras.studios.isEmpty()) list.add(new Rows.Row(getString(R.string.production), extras.studios));
                 rows.setRows(list);
                 if ("series".equals(item.type) && playEpisode != null) {
                     findViewById(R.id.play).requestFocus();
@@ -732,7 +741,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         }
         autoScrollSynopsis();
         String t = o instanceof Catalog.Item ? ((Catalog.Item) o).type : null;
-        if (o instanceof Catalog.Item && !"person".equals(t) && !"season".equals(t) && !"episode".equals(t)) {
+        if (o instanceof Catalog.Item && !"person".equals(t) && !"company".equals(t) && !"season".equals(t) && !"episode".equals(t)) {
             ambient.fromCache(((Catalog.Item) o).poster + '@' + Rows.px(this, 100));
         }
 
@@ -796,6 +805,10 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         if (!(o instanceof Catalog.Item)) return;
         if ("person".equals(((Catalog.Item) o).type)) {
             GridActivity.openPerson(this, (Catalog.Item) o);
+            return;
+        }
+        if ("company".equals(((Catalog.Item) o).type)) {
+            GridActivity.open(this, (Catalog.Item) o);
             return;
         }
         if ("season".equals(((Catalog.Item) o).type) && ((Catalog.Item) o).season == -1) {

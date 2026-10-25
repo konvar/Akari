@@ -83,6 +83,10 @@ public class GridActivity extends Activity {
             i.putExtra("mode", p[0]).putExtra("type", p[1]).putExtra("source", p[2]).putExtra("title", it.name);
         } else if ("list".equals(it.type)) {
             i.putExtra("mode", "list").putExtra("source", it.id).putExtra("title", it.name);
+        } else if ("company".equals(it.type)) {
+            // A network's shows, or a studio's movies (its shows, when opened from a show).
+            i.putExtra("mode", it.kind).putExtra("source", it.id).putExtra("title", it.name)
+                    .putExtra("type", "network".equals(it.kind) ? "series" : it.subtitle);
         } else {
             return false;
         }
@@ -172,6 +176,12 @@ public class GridActivity extends Activity {
                 }
                 else if ("lists".equals(mode)) got = Trakt.userLists(source, next, PAGE);
                 else if ("list".equals(mode)) got = Trakt.listItems(source, next, PAGE);
+                else if ("company".equals(mode) || "network".equals(mode)) {
+                    got = Tmdb.discover(mode, source, !"series".equals(type), next);
+                    List<Catalog.Item> fresh = new ArrayList<>();
+                    for (Catalog.Item it : got) if (shown.add(it.id)) fresh.add(it);
+                    got = fresh;
+                }
                 else if ("person".equals(mode)) got = next == 1 ? Trakt.personCredits(source) : new ArrayList<>();
             } catch (Exception e) {
                 android.util.Log.w("TvHomeGrid", "page " + next + " failed", e);
