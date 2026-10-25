@@ -464,7 +464,8 @@ public class DetailsActivity extends Activity implements Rows.Listener {
 
     /** The trailer on YouTube (the YouTube or TizenTube app, whichever opens YouTube links). */
     private void openTrailer(String key) {
-        if (!Trailers.open(this, key)) Toast.makeText(this, "Install a YouTube app (TizenTube, SmartTube) to play trailers", Toast.LENGTH_LONG).show();
+        // Full screen inside Akari, from the same source as the trailer behind the hero.
+        TrailerActivity.open(this, item.id, !"series".equals(item.type), key, item.name);
     }
 
     /**

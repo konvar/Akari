@@ -56,6 +56,17 @@
         android:fontFamily="@font/outfit"
         android:text="@string/search_prompt" />
 
+    <!-- Recent searches while the box is empty, like Nuvio's: a title with Clear, then one row per search. -->
+    <LinearLayout
+        android:id="@+id/history"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:paddingStart="48dp"
+        android:paddingEnd="48dp"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/results"
         android:layout_width="match_parent"

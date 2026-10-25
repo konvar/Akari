@@ -97,6 +97,13 @@
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode" />
 
         <activity
+            android:name=".TrailerActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode" />
+
+        <activity
             android:name=".DetailsActivity"
             android:exported="false"
             android:excludeFromRecents="true"

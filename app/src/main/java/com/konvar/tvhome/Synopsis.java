@@ -64,7 +64,7 @@ final class Synopsis {
     void restart() {
         stop();
         text.setAlpha(1f);
-        text.postDelayed(start, 5500);
+        text.postDelayed(start, 8000);
     }
 
     void stop() {

@@ -430,6 +430,7 @@ final class Rows {
                 }
                 if ("list".equals(it.type)) {
                     h.subtitle.setText(it.subtitle);
+                    ListArt.bind(h.itemView, it);
                     return;
                 }
                 if ("season".equals(it.type)) {

@@ -107,7 +107,7 @@ public class GridActivity extends Activity {
 
         RecyclerView grid = findViewById(R.id.grid);
         boolean lists = "lists".equals(mode);
-        grid.setLayoutManager(new GridLayoutManager(this, lists ? 5 : 8));
+        grid.setLayoutManager(new GridLayoutManager(this, lists ? 4 : 8));
         grid.setItemAnimator(null);
         adapter = new Adapter();
         grid.setAdapter(adapter);
@@ -435,6 +435,7 @@ public class GridActivity extends Activity {
             h.label.setText(it.name);
             if ("list".equals(it.type)) {
                 h.subtitle.setText(it.subtitle);
+                ListArt.bind(h.itemView, it);
             } else {
                 ImageLoader.load(h.image, it.poster, Rows.px(GridActivity.this, 100), Rows.px(GridActivity.this, 150));
                 h.check.setVisibility(Trakt.isWatched(it.id) ? View.VISIBLE : View.GONE);

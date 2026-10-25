@@ -9,6 +9,8 @@ import android.speech.RecognizerIntent;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -201,6 +203,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
             status.setText(R.string.search_prompt);
             return;
         }
+        ((View) findViewById(R.id.history)).setVisibility(View.GONE);
         status.setText(R.string.searching);
         String addon = getString(R.string.addon_url);
         Rows.Row[] found = new Rows.Row[3];
@@ -314,32 +317,97 @@ public class SearchActivity extends Activity implements Rows.Listener {
     }
 
     private void showHistory() {
-        List<Catalog.Item> cards = new ArrayList<>();
-        for (String q : history()) {
-            Catalog.Item it = new Catalog.Item();
-            it.type = "list";
-            it.kind = "recent";
-            it.name = q;
-            it.subtitle = getString(R.string.search_again);
-            cards.add(it);
+        LinearLayout box = findViewById(R.id.history);
+        box.removeAllViews();
+        List<String> h = history();
+        adapter.setRows(new ArrayList<>());
+        box.setVisibility(h.isEmpty() ? View.GONE : View.VISIBLE);
+        status.setVisibility(h.isEmpty() ? View.VISIBLE : View.GONE);
+        if (h.isEmpty()) return;
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView title = text(getString(R.string.recent_searches), 15);
+        title.setFontVariationSettings("'wght' 500");
+        head.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView clear = button(getString(R.string.clear_history));
+        clear.setOnClickListener(v -> {
+            getSharedPreferences("search", MODE_PRIVATE).edit().remove("history").apply();
+            showHistory();
+            query.requestFocus();
+        });
+        head.addView(clear);
+        box.addView(head);
+        for (String q : h) {
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-1, -2);
+            rlp.topMargin = Rows.px(this, 10);
+            TextView pick = button(q);
+            pick.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            // Icons are drawn, not typed: the app's font has no clock or cross symbols.
+            pick.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_history, 0, 0, 0);
+            pick.setCompoundDrawablePadding(Rows.px(this, 12));
+            pick.setCompoundDrawableTintList(pick.getTextColors());
+            pick.setOnClickListener(v -> {
+                query.setText(q);
+                query.setSelection(q.length());
+                query.removeCallbacks(runSearch);
+                search(q);
+                remember(q);
+                results.postDelayed(() -> results.requestFocus(), 400);
+            });
+            row.addView(pick, new LinearLayout.LayoutParams(0, -2, 1));
+            android.widget.ImageView remove = new android.widget.ImageView(this);
+            remove.setFocusable(true);
+            remove.setClickable(true);
+            remove.setBackgroundResource(R.drawable.setting_row_bg);
+            remove.setImageResource(R.drawable.ic_close);
+            remove.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+            remove.setImageTintList(pick.getTextColors());
+            remove.setContentDescription(getString(R.string.remove_search));
+            remove.setOnClickListener(v -> {
+                List<String> left = history();
+                left.remove(q);
+                getSharedPreferences("search", MODE_PRIVATE).edit().putString("history", String.join("\n", left)).apply();
+                showHistory();
+                View first = box.getChildCount() > 1 ? ((ViewGroup) box.getChildAt(1)).getChildAt(1) : query;
+                first.requestFocus();
+            });
+            LinearLayout.LayoutParams xlp = new LinearLayout.LayoutParams(Rows.px(this, 44), Rows.px(this, 44));
+            xlp.leftMargin = Rows.px(this, 12);
+            row.addView(remove, xlp);
+            box.addView(row, rlp);
         }
-        List<Rows.Row> rows = new ArrayList<>();
-        if (!cards.isEmpty()) rows.add(new Rows.Row(getString(R.string.recent_searches), cards));
-        adapter.setRows(rows);
+    }
+
+    private TextView text(String value, float sp) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(sp);
+        t.setTextColor(0xE6FFFFFF);
+        t.setTypeface(getResources().getFont(R.font.outfit));
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        return t;
+    }
+
+    /** A rounded row button: glass at rest, white with dark text when focused (as in Settings). */
+    private TextView button(String value) {
+        TextView t = text(value, 15);
+        t.setFocusable(true);
+        t.setClickable(true);
+        t.setBackgroundResource(R.drawable.setting_row_bg);
+        t.setTextColor(new android.content.res.ColorStateList(
+                new int[][]{{android.R.attr.state_focused}, {}}, new int[]{0xFF101114, 0xE6FFFFFF}));
+        int hp = Rows.px(this, 18), vp = Rows.px(this, 11);
+        t.setPadding(hp, vp, hp, vp);
+        return t;
     }
 
     @Override
     public void onItemClicked(Object item) {
         if (!(item instanceof Catalog.Item)) return;
         Catalog.Item picked = (Catalog.Item) item;
-        if ("recent".equals(picked.kind)) {
-            query.setText(picked.name);
-            query.setSelection(picked.name.length());
-            query.removeCallbacks(runSearch);
-            search(picked.name);
-            results.postDelayed(() -> results.requestFocus(), 400);
-            return;
-        }
         remember(lastQuery);
         if (GridActivity.open(this, (Catalog.Item) item)) return;
         try {

@@ -86,13 +86,7 @@ final class CardMenu {
         if (!"episode".equals(it.type) && Tmdb.configured()) {
             option(a, panel, "Trailer", () -> {
                 dialog.dismiss();
-                Net.IO.execute(() -> {
-                    String key = Tmdb.trailer(it.id, "movie".equals(it.type));
-                    Net.MAIN.post(() -> {
-                        if (key == null) Toast.makeText(a, "No trailer found", Toast.LENGTH_SHORT).show();
-                        else if (!Trailers.open(a, key)) Toast.makeText(a, "Install a YouTube app to play trailers", Toast.LENGTH_LONG).show();
-                    });
-                });
+                TrailerActivity.open(a, it.id, "movie".equals(it.type), null, it.name);
             });
         }
         if ("cw".equals(it.kind) && Tracking.TRAKT.equals(Tracking.active(a))) {
