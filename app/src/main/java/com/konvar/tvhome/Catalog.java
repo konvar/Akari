@@ -191,4 +191,36 @@ final class Catalog {
         }
         return i;
     }
+
+    /**
+     * The details page from Cinemeta (no account or key needed), the last fallback: info line and synopsis, with
+     * neither cast photos nor related titles. Null when Cinemeta has nothing.
+     */
+    static Trakt.Details cinemetaDetails(String addon, String imdb, boolean movie) {
+        try {
+            JSONObject m = new JSONObject(new String(Net.get(addon + "/meta/" + (movie ? "movie" : "series") + "/" + imdb + ".json"),
+                    java.nio.charset.StandardCharsets.UTF_8)).optJSONObject("meta");
+            if (m == null) return null;
+            Trakt.Details d = new Trakt.Details();
+            StringBuilder sb = new StringBuilder(movie ? "Movie" : "TV show");
+            String year = m.optString("releaseInfo", m.optString("year", ""));
+            if (!year.isEmpty()) sb.append("  \u00b7  ").append(year);
+            String runtime = m.optString("runtime", "");
+            if (!runtime.isEmpty()) sb.append("  \u00b7  ").append(runtime);
+            org.json.JSONArray genres = m.optJSONArray("genres");
+            StringBuilder g = new StringBuilder();
+            for (int k = 0; genres != null && k < genres.length() && k < 3; k++) {
+                if (g.length() > 0) g.append(", ");
+                g.append(genres.optString(k));
+            }
+            if (g.length() > 0) sb.append("  \u00b7  ").append(g);
+            d.meta = sb.toString();
+            d.tagline = "";
+            d.overview = m.optString("description", "");
+            return d;
+        } catch (Exception e) {
+            android.util.Log.w("TvHomeCatalog", "cinemeta details " + imdb + ": " + e);
+            return null;
+        }
+    }
 }

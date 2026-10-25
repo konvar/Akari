@@ -60,6 +60,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
   inside Akari, with sound (IMDb's own trailer first, YouTube as a backup; OK pauses).
 - Seasons and episodes with watched checkmarks and progress, cast (actor and character), and related titles that preview in the header.
 - A season ratings chart: every episode's IMDb rating, coloured from weak to great.
+- Works without a Trakt app too: the page is filled from TMDB (synopsis, cast with photos, recommendations).
 - The movie's collection (for example every Dark Knight film), in release order.
 - Network and production companies as logo cards; each opens a grid of its most popular titles.
 
@@ -76,7 +77,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - Trakt, Simkl, MDBList or your Nuvio account, chosen in Settings, like in Nuvio.
 - Continue Watching follows Nuvio's rules: only shows you dropped are left out, and a window setting keeps titles
   watched in the last 14 to 365 days, or all history (the default).
-- A calendar of upcoming episodes, and new-episode notifications.
+- A calendar of upcoming episodes (the last one stays on screen when Trakt is busy), and new-episode notifications.
 
 **Player apps**
 - [Nuvio](https://github.com/NuvioMedia/NuvioTV): Play and Resume open Nuvio's stream picker for the exact movie or
@@ -111,8 +112,8 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - A player app that opens titles: [Nuvio](https://github.com/NuvioMedia/NuvioTV), [Stremio](https://www.stremio.com),
   [Wuplay](https://github.com/wuplayapp/wuplay-releases) or [STRMR](https://github.com/strmrdev/strmr-releases). Any other
   app that opens `stremio://` links is detected too.
-- Optional: a free account and API key for each service you want (Trakt, Simkl or MDBList for tracking; TMDB, OMDb and
-  MDBList for artwork and ratings).
+- Optional: a free account and API key for each service you want (Trakt, Simkl or MDBList for tracking; OMDb and
+  MDBList for ratings). TMDB (artwork, age ratings, trailers, cast) is built in: nothing to set up.
 
 ## Install
 
@@ -121,7 +122,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.5.0.apk
+   adb install Akari-0.6.0.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does
@@ -147,7 +148,6 @@ synopses in a hero at the top, and everything opening straight in your player ap
 Open **Settings** (the gear at the top right of Home).
 
 1. **API keys.** Each key is typed on your phone: scan the QR code, paste the key, done. Keys stay on the TV.
-   - **TMDB** (free, [themoviedb.org](https://www.themoviedb.org/settings/api)): backdrops, episode stills, age ratings, trailers.
    - **MDBList** (free, [mdblist.com](https://mdblist.com/preferences/)): the ratings row, and MDBList tracking.
    - **OMDb** (free, [omdbapi.com](https://www.omdbapi.com/apikey.aspx)): IMDb ratings of episodes.
    - **Trakt app** and **Simkl app**: release builds have no built-in Trakt or Simkl app. Create your own (free) and enter
@@ -193,6 +193,8 @@ Settings:
 TRAKT_CLIENT_ID=...
 TRAKT_CLIENT_SECRET=...
 SIMKL_CLIENT_ID=...
+# TMDB key for artwork, age ratings, trailers and cast (release builds get Akari's own)
+TMDB_API_KEY=...
 # The Nuvio account option needs Nuvio's sync backend
 NUVIO_SUPABASE_URL=...
 NUVIO_SUPABASE_ANON_KEY=...
@@ -205,8 +207,6 @@ Releases are built by GitHub Actions when a `v*` tag is pushed (`.github/workflo
 - **More player apps.** Nuvio, Stremio, Wuplay and STRMR work today. Other apps that open movies and shows by IMDb or
   TMDB id can be added the same way.
 - **Home rows from TMDB:** recommendations based on what you watch, and rows per streaming service.
-- **Calendar:** keep the last good calendar on screen when Trakt limits requests.
-- **Details pages without a Trakt app ID:** synopsis from Cinemeta, cast and related titles from TMDB.
 
 ## Credits
 

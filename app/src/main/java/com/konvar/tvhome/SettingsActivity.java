@@ -453,7 +453,6 @@ public class SettingsActivity extends Activity {
 
     private void buildAccounts() {
         keyCard("OMDb key", Keys.OMDB, getString(R.string.omdb_hint));
-        keyCard("TMDB key", Keys.TMDB, getString(R.string.tmdb_hint));
         // Builds without their own Trakt / Simkl app (public releases): use yours, made at trakt.tv/oauth/applications
         // and simkl.com/settings/developer (redirect URI urn:ietf:wg:oauth:2.0:oob).
         if (BuildConfig.TRAKT_CLIENT_ID.isEmpty()) {

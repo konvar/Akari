@@ -47,7 +47,23 @@ public class CalendarActivity extends Activity implements Rows.Listener {
         if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim();
     }
 
+    /** True once a calendar (saved or fresh) is on screen. */
+    private boolean shown;
+    private int retries;
+
+    /**
+     * The last calendar that loaded shows at once; Trakt's answer replaces it. When Trakt does not answer (it limits
+     * how often it is asked), the saved calendar stays, with a note, and Trakt is asked again in 30 seconds.
+     */
     private void load() {
+        if (!shown) {
+            List<Rows.Row> saved = RowCache.load(this, "calendar");
+            if (saved != null && !saved.isEmpty() && !saved.get(0).items.isEmpty()) {
+                List<Catalog.Item> items = new ArrayList<>();
+                for (Object o : saved.get(0).items) if (o instanceof Catalog.Item) items.add((Catalog.Item) o);
+                show(items);
+            }
+        }
         Net.API.execute(() -> {
             List<Catalog.Item> items = null;
             try {
@@ -56,18 +72,37 @@ public class CalendarActivity extends Activity implements Rows.Listener {
                 android.util.Log.w("TvHomeCalendar", "calendar failed", e);
             }
             List<Catalog.Item> result = items;
+            if (result != null && !result.isEmpty()) {
+                List<Rows.Row> keep = new ArrayList<>();
+                keep.add(new Rows.Row("calendar", result));
+                RowCache.save(getApplicationContext(), "calendar", keep);
+            }
             Net.MAIN.post(() -> {
-                if (result == null || result.isEmpty()) {
-                    status.setText(R.string.calendar_empty);
+                if (isFinishing()) return;
+                if (result != null && !result.isEmpty()) {
+                    status.setText(null);
+                    show(result);
                     return;
                 }
-                status.setText(null);
-                List<Rows.Row> days = byDay(result);
-                rows.setRows(days);
-                RecyclerView list = findViewById(R.id.rows);
-                list.post(() -> Rows.focusRow(list, firstUpcoming(days), 0));
+                if (result == null && retries++ < 5) status.postDelayed(this::load, 30_000);
+                if (shown) {
+                    status.setText(result == null ? getString(R.string.calendar_saved) : null);
+                } else {
+                    status.setText(result == null ? R.string.calendar_busy : R.string.calendar_empty);
+                }
             });
         });
+    }
+
+    private void show(List<Catalog.Item> items) {
+        boolean first = !shown;
+        shown = true;
+        List<Rows.Row> days = byDay(items);
+        rows.setRows(days);
+        if (first) {
+            RecyclerView list = findViewById(R.id.rows);
+            list.post(() -> Rows.focusRow(list, firstUpcoming(days), 0));
+        }
     }
 
     /** One row per day: "Yesterday", "Today", "Tomorrow", then "Fri 24 Oct". */

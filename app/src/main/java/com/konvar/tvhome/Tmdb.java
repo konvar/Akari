@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * TMDB lookups the launcher adds on top of Trakt and Cinemeta, all cached for the session: the TMDB id of an
- * IMDb id, the age rating (certification) and the YouTube trailer. Needs the TMDB key from Settings.
+ * IMDb id, the age rating (certification) and the YouTube trailer. Uses the TMDB key built into Akari.
  */
 final class Tmdb {
 
@@ -240,4 +240,84 @@ final class Tmdb {
     }
 
     private static final java.util.concurrent.ExecutorService EXTERNAL = java.util.concurrent.Executors.newFixedThreadPool(6);
+
+    /**
+     * The details page from TMDB, for when Trakt cannot answer (no Trakt app ID, or Trakt is down): the info line,
+     * tagline, synopsis, cast with photos (they open their titles) and recommendations. Null without TMDB.
+     */
+    static Trakt.Details details(String imdb, boolean movie) {
+        long id = id(imdb, movie);
+        if (id <= 0) return null;
+        try {
+            JSONObject m = get((movie ? "/movie/" : "/tv/") + id + "?append_to_response=credits,recommendations");
+            Trakt.Details d = new Trakt.Details();
+            d.tmdb = id;
+            StringBuilder sb = new StringBuilder(movie ? "Movie" : "TV show");
+            String date = m.optString(movie ? "release_date" : "first_air_date", "");
+            if (date.length() >= 4) sb.append("  \u00b7  ").append(date, 0, 4);
+            int runtime = movie ? m.optInt("runtime") : 0;
+            if (!movie) {
+                JSONArray rt = m.optJSONArray("episode_run_time");
+                if (rt != null && rt.length() > 0) runtime = rt.optInt(0);
+            }
+            if (runtime > 0) sb.append("  \u00b7  ").append(runtime >= 60 ? runtime / 60 + "h " + runtime % 60 + "m" : runtime + "m");
+            if (!movie) {
+                JSONArray nets = m.optJSONArray("networks");
+                if (nets != null && nets.length() > 0) sb.append("  \u00b7  ").append(nets.getJSONObject(0).optString("name"));
+                int eps = m.optInt("number_of_episodes");
+                if (eps > 0) sb.append("  \u00b7  ").append(eps).append(" episodes");
+            }
+            JSONArray genres = m.optJSONArray("genres");
+            StringBuilder g = new StringBuilder();
+            for (int k = 0; genres != null && k < genres.length() && k < 3; k++) {
+                if (g.length() > 0) g.append(", ");
+                g.append(genres.getJSONObject(k).optString("name"));
+            }
+            if (g.length() > 0) sb.append("  \u00b7  ").append(g);
+            d.meta = sb.toString();
+            String tag = m.optString("tagline", "");
+            d.tagline = "null".equals(tag) ? "" : tag;
+            d.overview = m.optString("overview", "");
+            d.cert = certification(imdb, movie);
+            JSONObject credits = m.optJSONObject("credits");
+            JSONArray cast = credits != null ? credits.optJSONArray("cast") : null;
+            for (int k = 0; cast != null && k < cast.length() && k < 20; k++) {
+                JSONObject c = cast.getJSONObject(k);
+                Catalog.Item p = new Catalog.Item();
+                p.type = "person";
+                p.id = "tmdb:" + c.optLong("id");
+                p.name = c.optString("name");
+                p.subtitle = c.optString("character", "");
+                String photo = c.optString("profile_path", "");
+                if (!photo.isEmpty() && !"null".equals(photo)) p.poster = "https://image.tmdb.org/t/p/w185" + photo;
+                d.cast.add(p);
+            }
+            JSONObject rec = m.optJSONObject("recommendations");
+            JSONArray results = rec != null ? rec.optJSONArray("results") : null;
+            List<JSONObject> list = new java.util.ArrayList<>();
+            for (int k = 0; results != null && k < results.length() && k < 20; k++) list.add(results.getJSONObject(k));
+            d.related.addAll(withImdb(list, movie));
+            return d;
+        } catch (Exception e) {
+            android.util.Log.w("TvHomeTmdb", "details " + imdb + ": " + e);
+            return null;
+        }
+    }
+
+    /** Everything a person appeared in (TMDB person id), newest first, for cast found through TMDB. */
+    static List<Catalog.Item> personCredits(String personId) throws Exception {
+        JSONArray cast = get("/person/" + personId + "/combined_credits").optJSONArray("cast");
+        List<JSONObject> movies = new java.util.ArrayList<>(), shows = new java.util.ArrayList<>();
+        for (int k = 0; cast != null && k < cast.length(); k++) {
+            JSONObject c = cast.getJSONObject(k);
+            if ("tv".equals(c.optString("media_type"))) shows.add(c);
+            else if ("movie".equals(c.optString("media_type"))) movies.add(c);
+        }
+        List<Catalog.Item> out = new java.util.ArrayList<>(withImdb(movies, true));
+        out.addAll(withImdb(shows, false));
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        out.removeIf(it -> !seen.add(it.id));
+        out.sort((a, b) -> String.valueOf(b.year).compareTo(String.valueOf(a.year)));
+        return out;
+    }
 }

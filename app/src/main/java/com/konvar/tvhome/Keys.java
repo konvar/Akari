@@ -27,6 +27,8 @@ final class Keys {
     }
 
     static String get(String name) {
+        // TMDB uses Akari's built-in key; a key once entered on the TV is only a fallback for builds without one.
+        if (TMDB.equals(name) && !BuildConfig.TMDB_API_KEY.isEmpty()) return BuildConfig.TMDB_API_KEY;
         return app == null ? "" : prefs().getString(name, "");
     }
 

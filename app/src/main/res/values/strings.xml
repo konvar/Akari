@@ -40,6 +40,8 @@
     <string name="app_move_hint">Move the app with Left and Right. Press OK when done.</string>
     <string name="recent_searches">Recent searches</string>
     <string name="clear_history">Clear</string>
+    <string name="calendar_saved">Trakt is busy: showing the last calendar. Trying again shortly.</string>
+    <string name="calendar_busy">Trakt is busy. Trying again shortly.</string>
     <string name="network">Network</string>
     <string name="production">Production</string>
     <string name="collection">Collection</string>
@@ -82,7 +84,6 @@
     <string name="trakt_qr_hint">Scan with your phone and approve, or go to %1$s and enter this code:</string>
     <string name="mdblist_hint">Scan with your phone and paste your API key from mdblist.com (Preferences). Ratings on the home screen and details.</string>
     <string name="omdb_hint">Scan with your phone and paste your free key from omdbapi.com. IMDb ratings for episodes.</string>
-    <string name="tmdb_hint">Scan with your phone and paste your API key from themoviedb.org. Card images and episode ratings.</string>
     <string name="menu_details">Details</string>
     <string name="menu_mark_watched">Mark as watched</string>
     <string name="menu_remove_cw">Remove from Continue watching</string>

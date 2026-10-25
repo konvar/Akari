@@ -182,7 +182,11 @@ public class GridActivity extends Activity {
                     for (Catalog.Item it : got) if (shown.add(it.id)) fresh.add(it);
                     got = fresh;
                 }
-                else if ("person".equals(mode)) got = next == 1 ? Trakt.personCredits(source) : new ArrayList<>();
+                else if ("person".equals(mode)) {
+                    // Cast found through TMDB (no Trakt app) carries a TMDB person id.
+                    got = next != 1 ? new ArrayList<>() : source.startsWith("tmdb:")
+                            ? Tmdb.personCredits(source.substring(5)) : Trakt.personCredits(source);
+                }
             } catch (Exception e) {
                 android.util.Log.w("TvHomeGrid", "page " + next + " failed", e);
             }

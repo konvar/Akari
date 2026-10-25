@@ -47,7 +47,7 @@ final class DetailsPrefetch {
         if (e != null && System.currentTimeMillis() - e.at < FRESH_MS) return e;
         Context app = c.getApplicationContext();
         Bundle n = new Bundle();
-        n.details = POOL.submit(() -> Trakt.details(it.id, it.type));
+        n.details = POOL.submit(() -> details(app, it.id, !series));
         n.ratings = POOL.submit(() -> MdbList.ratings(app, it.id, !series));
         if (series) {
             String url = app.getString(R.string.addon_url) + "/meta/series/" + it.id + ".json";
@@ -56,6 +56,22 @@ final class DetailsPrefetch {
         }
         CACHE.put(key, n);
         return n;
+    }
+
+    /**
+     * Trakt first (when a Trakt app is set up); when it has no app ID or does not answer, TMDB (cast with photos and
+     * recommendations), then Cinemeta (info line and synopsis).
+     */
+    static Trakt.Details details(Context app, String imdb, boolean movie) {
+        if (Trakt.configured()) {
+            try {
+                return Trakt.details(imdb, movie ? "movie" : "series");
+            } catch (Exception e) {
+                android.util.Log.w("TvHomeDetails", "Trakt details failed, using TMDB / Cinemeta: " + e);
+            }
+        }
+        Trakt.Details d = Tmdb.configured() ? Tmdb.details(imdb, movie) : null;
+        return d != null ? d : Catalog.cinemetaDetails(app.getString(R.string.addon_url), imdb, movie);
     }
 
     /** A cached title is dropped after it was watched or marked, so its page shows fresh checkmarks. */

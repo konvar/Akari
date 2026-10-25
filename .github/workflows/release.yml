@@ -41,6 +41,7 @@ jobs:
           AKARI_KEYSTORE_PASSWORD: ${{ secrets.AKARI_KEYSTORE_PASSWORD }}
           AKARI_KEY_ALIAS: ${{ secrets.AKARI_KEY_ALIAS }}
           AKARI_KEY_PASSWORD: ${{ secrets.AKARI_KEY_PASSWORD }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
