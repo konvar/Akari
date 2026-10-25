@@ -9,7 +9,9 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
 [Download the latest release](../../releases/latest)
 
-![Home](docs/screenshots/01-home.jpg)
+[![Akari in use: Home, details, search and lists](docs/demo.webp)](docs/demo.mp4)
+
+<sub>Click for the full-quality video.</sub>
 
 </div>
 
