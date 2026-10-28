@@ -928,10 +928,12 @@ public class SettingsActivity extends Activity {
         return b;
     }
 
-    /** Starts a system page; false when this TV does not have it. */
+    /**
+     * Starts a system page; false when this TV does not have it. Opened directly: asking Android first
+     * (resolveActivity) says "no" for other apps' pages to apps built for Android 11 and later.
+     */
     private boolean tryOpen(Intent i) {
         try {
-            if (i.resolveActivity(getPackageManager()) == null) return false;
             startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             return true;
         } catch (Exception e) {
