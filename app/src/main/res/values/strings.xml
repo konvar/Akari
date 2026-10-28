@@ -44,6 +44,9 @@
     <string name="update_title">Akari %1$s is available</string>
     <string name="update_current">You have %1$s  ·  download %2$s</string>
     <string name="update_now">Update now</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_check_failed">Could not reach GitHub. Check the connection and try again.</string>
+    <string name="update_latest">You have the latest version (%1$s).</string>
     <string name="update_later">Later</string>
     <string name="update_skip">Skip this version</string>
     <string name="update_no_notes">No release notes were provided.</string>

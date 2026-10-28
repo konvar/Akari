@@ -54,7 +54,7 @@ final class Updater {
 
     /** Checks quietly; shows the dialog on {@code a} when there is a newer release not skipped or postponed. */
     static void check(Activity a) {
-        if (!BuildConfig.UPDATES) return;
+        if (!BuildConfig.UPDATES || !automatic(a)) return;
         SharedPreferences p = prefs(a);
         long now = System.currentTimeMillis();
         // The six-hour pause counts per installed version, so a new version checks again straight away.
@@ -69,6 +69,40 @@ final class Updater {
             if (!newer(r.version, BuildConfig.VERSION_NAME) || r.tag.equals(p.getString("skipped", ""))) return;
             Net.MAIN.post(() -> {
                 if (!a.isFinishing() && !a.isDestroyed()) show(a, r);
+            });
+        });
+    }
+
+    /** Automatic checks after Home opens; on by default, switched off in Settings > System. */
+    static boolean automatic(Context c) {
+        return prefs(c).getBoolean("automatic", true);
+    }
+
+    static void setAutomatic(Context c, boolean on) {
+        prefs(c).edit().putBoolean("automatic", on).apply();
+    }
+
+    /** When updates were last looked for (0: never). */
+    static long lastChecked(Context c) {
+        return prefs(c).getLong("checked", 0);
+    }
+
+    /**
+     * Check for updates, from Settings: asks GitHub now, ignoring Later and Skip, and shows the update popup or
+     * says this is the latest version.
+     */
+    static void checkNow(Activity a, Runnable done) {
+        Toast.makeText(a, R.string.update_checking, Toast.LENGTH_SHORT).show();
+        Net.API.execute(() -> {
+            Release r = latest();
+            if (r != null) prefs(a).edit().putLong("checked", System.currentTimeMillis())
+                    .putString("checked_by", BuildConfig.VERSION_NAME).remove("later_until").apply();
+            Net.MAIN.post(() -> {
+                if (a.isFinishing() || a.isDestroyed()) return;
+                if (r == null) Toast.makeText(a, R.string.update_check_failed, Toast.LENGTH_LONG).show();
+                else if (newer(r.version, BuildConfig.VERSION_NAME)) show(a, r);
+                else Toast.makeText(a, a.getString(R.string.update_latest, BuildConfig.VERSION_NAME), Toast.LENGTH_LONG).show();
+                if (done != null) done.run();
             });
         });
     }

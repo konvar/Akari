@@ -805,6 +805,7 @@ public class SettingsActivity extends Activity {
         } catch (Exception ignored) {
         }
         addScreensaverCard();
+        addUpdateCards();
         card("About", "Akari " + version + "  ·  " + getPackageName(), null, v -> {
         });
     }
@@ -820,6 +821,26 @@ public class SettingsActivity extends Activity {
                 return;
             }
             pickScreensaverDelay(now);
+        });
+    }
+
+    /** Check for updates now, and whether Akari looks for them by itself. */
+    private void addUpdateCards() {
+        if (!BuildConfig.UPDATES) {
+            card("Check for updates", "Local build: updates come from your own builds, not from GitHub.", null, v -> {
+            });
+            return;
+        }
+        long at = Updater.lastChecked(this);
+        String when = at == 0 ? "never checked" : "last checked " + android.text.format.DateUtils
+                .getRelativeTimeSpanString(at, System.currentTimeMillis(), 60_000).toString().toLowerCase(java.util.Locale.ROOT);
+        card("Check for updates", "Akari " + BuildConfig.VERSION_NAME + "  ·  " + when + "  ·  press to check now",
+                chevron(), v -> Updater.checkNow(this, () -> showSection(section)));
+        boolean auto = Updater.automatic(this);
+        card("Automatic update checks", auto ? "On: a new version shows a popup on Home (at most every six hours)"
+                : "Off: only Check for updates looks for new versions", toggle(auto), v -> {
+            Updater.setAutomatic(this, !auto);
+            showSection(section);
         });
     }
 
