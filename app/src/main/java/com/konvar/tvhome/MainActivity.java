@@ -312,6 +312,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             int k = event.getKeyCode();
             if (k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_DOWN
                     || k == KeyEvent.KEYCODE_DPAD_LEFT || k == KeyEvent.KEYCODE_DPAD_RIGHT) userMoved = true;
+            lastKeyAt = SystemClock.uptimeMillis();
         }
         return super.dispatchKeyEvent(event);
     }
@@ -797,6 +798,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         }
     }
 
+    private long lastKeyAt;
+
     private void publishRows() {
         View focused = getCurrentFocus();
         boolean hadFocus = userMoved && focused != null && rowList.findContainingItemView(focused) != null;
@@ -815,23 +818,48 @@ public class MainActivity extends Activity implements Rows.Listener {
             if (rx >= 0 && ry >= 0) return Integer.compare(rx, ry);
             return Integer.compare(natural.get(x.title), natural.get(y.title));
         });
-        // Remember where focus was, to put it back if this refresh redraws that row.
+        // Remember the exact card under focus (its row and its title), to put focus back on it after the refresh.
+        // A redrawn row drops focus and Android hands it to the first card it finds (the first app), so checking
+        // only that something still has focus is not enough.
+        String focusTitle = null, focusKey = null;
         int focusRow = -1, focusCard = 0;
         if (hadFocus) {
             View row = rowList.findContainingItemView(focused);
             focusRow = row != null ? rowList.getChildAdapterPosition(row) : -1;
             Rows.Row r = adapter.get(focusRow);
-            if (r != null) focusCard = r.lastFocus;
+            if (r != null) {
+                focusCard = r.lastFocus;
+                focusTitle = r.title;
+                if (focusCard >= 0 && focusCard < r.items.size()) focusKey = keyOf(r.items.get(focusCard));
+            }
         }
         adapter.setRows(rows);
-        if (hadFocus && focusRow >= 0) {
+        if (hadFocus && focusTitle != null) {
+            String ft = focusTitle, fk = focusKey;
             int fr = focusRow, fc = focusCard;
-            rowList.post(() -> {
-                View now = getCurrentFocus();
-                if (now == null || rowList.findContainingItemView(now) == null) {
-                    Rows.focusRow(rowList, Math.min(fr, adapter.getItemCount() - 1), fc);
+            long refreshedAt = SystemClock.uptimeMillis();
+            Runnable keep = () -> {
+                // A key pressed since the refresh is the user's own move: leave it.
+                if (lastKeyAt > refreshedAt) return;
+                Object now = Rows.itemFor(getCurrentFocus());
+                if (now != null && fk != null && fk.equals(keyOf(now))) return;
+                for (int i = 0; adapter.get(i) != null; i++) {
+                    Rows.Row r = adapter.get(i);
+                    if (!r.title.equals(ft)) continue;
+                    int card = Math.min(fc, Math.max(0, r.items.size() - 1));
+                    for (int k = 0; fk != null && k < r.items.size(); k++) {
+                        if (fk.equals(keyOf(r.items.get(k)))) {
+                            card = k;
+                            break;
+                        }
+                    }
+                    Rows.focusRow(rowList, i, card);
+                    return;
                 }
-            });
+                Rows.focusRow(rowList, Math.min(fr, adapter.getItemCount() - 1), fc);
+            };
+            rowList.post(keep);
+            rowList.postDelayed(keep, 120);
         }
         if (!hadFocus) {
             rowList.post(this::restoreLastOrTop);

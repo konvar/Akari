@@ -306,9 +306,10 @@ public class DetailsActivity extends Activity implements Rows.Listener {
             View v = h.itemView;
             int dy;
             if (row == rows.getItemCount() - 1 && row > 0) {
-                // The last row (Related) rests low on the page, under the header, with room around it.
+                // The last row rests low on the page, under the header, with room around it.
                 dy = v.getBottom() - (list.getHeight() - Rows.px(this, 36));
             } else {
+                // Up under the header; near the end the list stops where it can, so the rows below stay in view.
                 dy = v.getTop() - list.getPaddingTop();
             }
             if (Math.abs(dy) > 2) {
@@ -736,8 +737,13 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         if (row >= 0 && row != alignedRow) {
             // Only when focus changes rows: moving along a row must not move the page.
             alignedRow = row;
-            alignRow(list, row);
-            fadeRowsAbove(list, row);
+            // Network and Production are short rows: on Production the page stays on Network, so both show.
+            int anchor = row;
+            Rows.Row here = rows.get(row), above = row > 0 ? rows.get(row - 1) : null;
+            if (here != null && above != null && getString(R.string.production).equals(here.title)
+                    && getString(R.string.network).equals(above.title)) anchor = row - 1;
+            alignRow(list, anchor);
+            fadeRowsAbove(list, anchor);
         }
         autoScrollSynopsis();
         String t = o instanceof Catalog.Item ? ((Catalog.Item) o).type : null;
