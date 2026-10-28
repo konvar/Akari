@@ -84,7 +84,10 @@ public class PosterDream extends DreamService {
         cp.bottomMargin = Rows.px(this, 64);
         root.addView(caption, cp);
 
-        clock = text(22, 0x99FFFFFF);
+        clock = new OutlinedText(this);
+        clock.setTextSize(22);
+        clock.setTextColor(0xF2FFFFFF);
+        clock.setTypeface(getResources().getFont(R.font.outfit));
         clock.setFontVariationSettings("'wght' 300");
         FrameLayout.LayoutParams kp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
         kp.topMargin = Rows.px(this, 40);
@@ -98,7 +101,6 @@ public class PosterDream extends DreamService {
         t.setTextSize(sp);
         t.setTextColor(color);
         t.setTypeface(getResources().getFont(R.font.outfit));
-        t.setShadowLayer(12, 0, 2, 0x99000000);
         return t;
     }
 
@@ -154,19 +156,81 @@ public class PosterDream extends DreamService {
         clock.postDelayed(this::showClock, 20_000);
     }
 
+    /** White text with a thin dark outline: readable on any picture, bright or dark, while it moves. */
+    private static final class OutlinedText extends TextView {
+        OutlinedText(android.content.Context c) {
+            super(c);
+        }
+
+        /** The outline is drawn straight from the text layout (changing the text colour here would redraw forever). */
+        @Override
+        protected void onDraw(android.graphics.Canvas canvas) {
+            android.text.Layout layout = getLayout();
+            if (layout != null) {
+                android.text.TextPaint p = getPaint();
+                int color = p.getColor();
+                p.setStyle(android.graphics.Paint.Style.STROKE);
+                p.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+                p.setStrokeWidth(Rows.px(getContext(), 3));
+                p.setColor(0x99000000);
+                canvas.save();
+                canvas.translate(getCompoundPaddingLeft(), getExtendedPaddingTop());
+                layout.draw(canvas);
+                canvas.restore();
+                p.setStyle(android.graphics.Paint.Style.FILL);
+                p.setColor(color);
+            }
+            super.onDraw(canvas);
+        }
+    }
+
+    /**
+     * A new place for the clock with every picture (top right, top left or bottom right, a little off each time),
+     * so nothing stays lit in one spot on OLED screens. Bottom left is the title's.
+     */
+    private void moveClock() {
+        int[] corners = {Gravity.TOP | Gravity.END, Gravity.TOP | Gravity.START, Gravity.BOTTOM | Gravity.END};
+        FrameLayout.LayoutParams kp = (FrameLayout.LayoutParams) clock.getLayoutParams();
+        kp.gravity = corners[(int) (Math.random() * corners.length)];
+        int jx = Rows.px(this, 40 + (int) (Math.random() * 60)), jy = Rows.px(this, 32 + (int) (Math.random() * 40));
+        kp.leftMargin = kp.rightMargin = jx;
+        kp.topMargin = kp.bottomMargin = jy;
+        clock.setLayoutParams(kp);
+    }
+
     /** Loads the next slide's pictures, then starts its timeline; titles whose backdrop fails are skipped. */
     private void next() {
         if (!running || slides.isEmpty()) return;
         Catalog.Item it = slides.get(index++ % slides.size());
         hideAll();
         int w = getResources().getDisplayMetrics().widthPixels, h = getResources().getDisplayMetrics().heightPixels;
-        String big = it.background.replace("/medium/", "/large/");
+        Net.IO.execute(() -> {
+            // A picture without its title printed on it: the clear logo goes on top, so no doubled title.
+            String clean = Tmdb.configured() ? Tmdb.textlessBackdrop(it.id, "movie".equals(it.type)) : "";
+            Net.MAIN.post(() -> {
+                if (!running) return;
+                if (clean.isEmpty() && ++skipped < slides.size()) {
+                    backdrop.postDelayed(this::next, 50);
+                    return;
+                }
+                // None of the titles has a picture without text: show the usual pictures rather than nothing.
+                skipped = 0;
+                show(it, clean.isEmpty() ? it.background.replace("/medium/", "/large/") : clean, w, h);
+            });
+        });
+    }
+
+    /** Titles skipped in a row for want of a picture without text. */
+    private int skipped;
+
+    private void show(Catalog.Item it, String big, int w, int h) {
         ImageLoader.load(backdrop, big, w, h, false, () -> {
             if (!running) return;
             if (backdrop.getDrawable() == null) {
                 backdrop.postDelayed(this::next, 300);
                 return;
             }
+            moveClock();
             title.setText(it.name);
             title.setVisibility(View.GONE);
             logo.setVisibility(View.VISIBLE);
@@ -184,9 +248,12 @@ public class PosterDream extends DreamService {
             motion = m;
             startedAt = 0;
             Choreographer.getInstance().postFrameCallback(frame);
-            // The slide after this one, decoded while this one shows.
+            // The slide after this one, looked up and decoded while this one shows.
             Catalog.Item after = slides.get(index % slides.size());
-            ImageLoader.preload(this, after.background.replace("/medium/", "/large/"), w, h, false);
+            Net.IO.execute(() -> {
+                String next = Tmdb.configured() ? Tmdb.textlessBackdrop(after.id, "movie".equals(after.type)) : "";
+                if (!next.isEmpty()) ImageLoader.preload(this, next, w, h, false);
+            });
             ImageLoader.preload(this, after.logo, Rows.px(this, 460), Rows.px(this, 150), true);
         });
     }

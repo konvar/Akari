@@ -320,4 +320,39 @@ final class Tmdb {
         out.sort((a, b) -> String.valueOf(b.year).compareTo(String.valueOf(a.year)));
         return out;
     }
+
+    private static final Map<String, String> CLEAN = new ConcurrentHashMap<>();
+
+    /**
+     * The best-rated backdrop with no text on it (TMDB marks those with no language), for the screensaver, where the
+     * clear logo is drawn on top; "" when the title has none. Looked up once per title.
+     */
+    static String textlessBackdrop(String imdb, boolean movie) {
+        String key = (movie ? "m" : "t") + imdb;
+        String known = CLEAN.get(key);
+        if (known != null) return known;
+        String out = "";
+        long id = id(imdb, movie);
+        if (id > 0) {
+            try {
+                JSONArray b = get((movie ? "/movie/" : "/tv/") + id + "/images?include_image_language=null")
+                        .optJSONArray("backdrops");
+                double best = -1;
+                for (int k = 0; b != null && k < b.length(); k++) {
+                    JSONObject o = b.getJSONObject(k);
+                    if (!o.isNull("iso_639_1")) continue;
+                    double score = o.optDouble("vote_average", 0) * 1000 + o.optInt("vote_count", 0);
+                    if (score > best) {
+                        best = score;
+                        out = "https://image.tmdb.org/t/p/w1280" + o.optString("file_path");
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.w("TvHomeTmdb", "backdrops " + imdb + ": " + e);
+                return "";
+            }
+        }
+        CLEAN.put(key, out);
+        return out;
+    }
 }

@@ -15,8 +15,8 @@ android {
         applicationId = 'com.konvar.tvhome'
         minSdk = 26
         targetSdk = 36
-        versionCode = 35
-        versionName = '0.7.7'
+        versionCode = 36
+        versionName = '0.7.8'
         buildConfigField 'String', 'TRAKT_CLIENT_ID', "\"${localProps.getProperty('TRAKT_CLIENT_ID', '')}\""
         buildConfigField 'String', 'TRAKT_CLIENT_SECRET', "\"${localProps.getProperty('TRAKT_CLIENT_SECRET', '')}\""
         // Other tracking services, from the same file: Simkl (PIN sign-in) and the Nuvio account (Supabase).
