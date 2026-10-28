@@ -41,6 +41,9 @@ synopses in a hero at the top, and everything opening straight in your player ap
 - Your own ratings in the corner of every poster, season and episode, as the old Trakt website showed them: a folded
   corner from grey (1) to red (10), from Trakt, Simkl or MDBList.
 - Clock and weather (automatic location or a town you choose); both can be hidden.
+- A screensaver after Nuvio's Ambient Mode: trending and popular titles full screen, slowly zooming, with their clear
+  logo and genres. Its delay is set in Settings → System → Screensaver.
+- Updates itself: a new release on GitHub shows its notes with Update now, Later and Skip this version.
 - The buttons in the top bar adapt to the picture behind them, so they stay readable on bright artwork.
 - Everything next to the focused card is fetched ahead, so artwork, logos and ratings appear instantly.
 - Rows refresh as soon as the TV wakes up or comes online, and keep what they show while the connection returns. A
@@ -122,7 +125,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 
    ```sh
    adb connect <tv-ip>
-   adb install Akari-0.6.1.apk
+   adb install Akari-0.7.0.apk
    ```
 
 3. Make it the home screen. Android TV usually asks which home app to use the next time you press Home. Google TV does
@@ -141,7 +144,12 @@ synopses in a hero at the top, and everything opening straight in your player ap
    adb shell pm grant com.konvar.tvhome android.permission.READ_TV_LISTINGS
    # New-episode notifications (Android 13+)
    adb shell pm grant com.konvar.tvhome android.permission.POST_NOTIFICATIONS
+   # Screensaver: on TVs without "Modify system settings" (or with Google's screensaver app removed)
+   adb shell appops set com.konvar.tvhome WRITE_SETTINGS allow
+   adb shell pm grant com.konvar.tvhome android.permission.WRITE_SECURE_SETTINGS
    ```
+
+   Akari 0.7.0 and later update themselves; older versions need this release installed once by hand.
 
 ## Set up
 

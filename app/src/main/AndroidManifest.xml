@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -8,6 +9,12 @@
 
     <!-- Movie and show rows, search and their artwork come from a Stremio catalog addon. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Updates from GitHub releases go through Android's installer (the user confirms each one). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Screensaver delay from Akari's settings (the user allows "Modify system settings"), and choosing
+         Akari's screensaver (granted over adb on TVs whose screensaver settings were removed). -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <!-- Reads the content app's "Continue Watching" home-screen channel, as Projectivy does. Runtime
          permission: build-and-install grants it over adb. -->
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
@@ -96,6 +103,10 @@
             android:excludeFromRecents="true"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode" />
 
+        <receiver
+            android:name=".Updater$InstallResult"
+            android:exported="false" />
+
         <activity
             android:name=".TrailerActivity"
             android:exported="false"
@@ -147,6 +158,18 @@
         <service
             android:name=".ClockDream"
             android:label="@string/dream_name"
+            android:exported="true"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+        <!-- Screensaver after Nuvio's Ambient Mode: trending and popular titles with their logos. -->
+        <service
+            android:name=".PosterDream"
+            android:label="@string/dream_posters"
             android:exported="true"
             android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter>

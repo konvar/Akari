@@ -72,6 +72,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     private boolean userMoved;
 
     private final Runnable showHero = this::bindHero;
+    private final Runnable updateCheck = () -> Updater.check(this);
     private final Runnable reloadChannels = this::loadChannels;
 
     /** Nuvio rewrites its channel when progress changes; follow it while Home is around. */
@@ -216,6 +217,9 @@ public class MainActivity extends Activity implements Rows.Listener {
         checkTraktActivity();
         Net.MAIN.removeCallbacks(activityCheck);
         Net.MAIN.postDelayed(this::checkTraktActivity, 20_000);
+        // New Akari release on GitHub: asked a few seconds after Home settles (at most every six hours).
+        Net.MAIN.removeCallbacks(updateCheck);
+        Net.MAIN.postDelayed(updateCheck, 6_000);
         Net.MAIN.postDelayed(activityCheck, 60_000);
         // Also retry when the first try failed, e.g. at boot before Wi-Fi was up.
         applyTopBar();
@@ -247,6 +251,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     protected void onPause() {
         super.onPause();
         heroTrailer.focus(null);
+        Net.MAIN.removeCallbacks(updateCheck);
         leftRowTitle = userMoved ? lastRowTitle : null;
         leftItemKey = lastItemKey;
         if (leftRowTitle != null) {

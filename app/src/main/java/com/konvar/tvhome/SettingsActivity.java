@@ -804,7 +804,43 @@ public class SettingsActivity extends Activity {
             version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception ignored) {
         }
+        addScreensaverCard();
         card("About", "Akari " + version + "  ·  " + getPackageName(), null, v -> {
+        });
+    }
+
+    /** How long the TV waits before Akari's screensaver starts; choosing also makes it the TV's screensaver. */
+    private void addScreensaverCard() {
+        int minutes = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, 600_000) / 60_000;
+        String now = minutes >= 60 * 24 ? "Never" : minutes + (minutes == 1 ? " minute" : " minutes");
+        card("Screensaver", "Akari: movies and shows  ·  starts after " + now.toLowerCase(java.util.Locale.ROOT)
+                + " without a key press  ·  press to change", chevron(), v -> {
+            if (!Settings.System.canWrite(this)) {
+                // Android asks once to let Akari change system settings.
+                try {
+                    open(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, android.net.Uri.parse("package:" + getPackageName())));
+                    Toast.makeText(this, "Allow Akari to modify system settings, then come back.", Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, "This TV has no setting for it. From a computer: adb shell appops set "
+                            + getPackageName() + " WRITE_SETTINGS allow", Toast.LENGTH_LONG).show();
+                }
+                return;
+            }
+            java.util.List<String> options = java.util.Arrays.asList("1 minute", "2 minutes", "5 minutes", "10 minutes",
+                    "15 minutes", "30 minutes", "Never");
+            Picker.single(this, "Start the screensaver after", options, now, chosen -> {
+                String c = chosen.iterator().next();
+                int ms = "Never".equals(c) ? Integer.MAX_VALUE : Integer.parseInt(c.split(" ")[0]) * 60_000;
+                Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, ms);
+                try {
+                    // Akari's screensaver, switched on (needs the adb-granted permission; skipped quietly without it).
+                    Settings.Secure.putString(getContentResolver(), "screensaver_components",
+                            getPackageName() + "/.PosterDream");
+                    Settings.Secure.putInt(getContentResolver(), "screensaver_enabled", 1);
+                } catch (SecurityException ignored) {
+                }
+                showSection(section);
+            });
         });
     }
 

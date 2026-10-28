@@ -40,6 +40,17 @@
     <string name="app_move_hint">Move the app with Left and Right. Press OK when done.</string>
     <string name="recent_searches">Recent searches</string>
     <string name="clear_history">Clear</string>
+    <string name="dream_posters">Akari: movies and shows</string>
+    <string name="update_title">Akari %1$s is available</string>
+    <string name="update_current">You have %1$s  ·  download %2$s</string>
+    <string name="update_now">Update now</string>
+    <string name="update_later">Later</string>
+    <string name="update_skip">Skip this version</string>
+    <string name="update_no_notes">No release notes were provided.</string>
+    <string name="update_downloading">Downloading %1$d%%</string>
+    <string name="update_confirm">Confirm the update in the window that opens.</string>
+    <string name="update_failed">The update could not be installed. Try again later.</string>
+    <string name="update_allow">Allow Akari to install apps, then come back and press Update now.</string>
     <string name="calendar_saved">Trakt is busy: showing the last calendar. Trying again shortly.</string>
     <string name="calendar_busy">Trakt is busy. Trying again shortly.</string>
     <string name="network">Network</string>

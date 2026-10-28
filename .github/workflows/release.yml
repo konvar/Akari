@@ -56,5 +56,7 @@ jobs:
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "Akari-$VERSION.apk" --clobber
           else
-            gh release create "$TAG" "Akari-$VERSION.apk" --title "Akari $VERSION" --generate-notes
+            # The notes are the release commit's message (below its first line); Akari's update popup shows them.
+            git log -1 --format=%b > notes.md
+            gh release create "$TAG" "Akari-$VERSION.apk" --title "Akari $VERSION" --notes-file notes.md
           fi
