@@ -207,6 +207,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         loadWeather();
         EpisodeJob.schedule(this);
         watchNetworkAndWake();
+        storageNotice = new StorageNotice(this);
+        storageNotice.start();
     }
 
     @Override
@@ -274,8 +276,11 @@ public class MainActivity extends Activity implements Rows.Listener {
         if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim();
     }
 
+    private StorageNotice storageNotice;
+
     @Override
     protected void onDestroy() {
+        if (storageNotice != null) storageNotice.stop();
         try {
             unregisterReceiver(screenOn);
             android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);

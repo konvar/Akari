@@ -40,6 +40,14 @@
     <string name="app_move_hint">Move the app with Left and Right. Press OK when done.</string>
     <string name="recent_searches">Recent searches</string>
     <string name="clear_history">Clear</string>
+    <string name="storage_usb">USB drive</string>
+    <string name="usb_device">USB device</string>
+    <string name="usb_connected">%1$s connected</string>
+    <string name="usb_removed">%1$s disconnected</string>
+    <string name="network_now">Now on %1$s</string>
+    <string name="storage_connected">%1$s connected</string>
+    <string name="storage_removed">%1$s disconnected</string>
+    <string name="storage_unreadable">%1$s can’t be read: check the cable, or format it</string>
     <string name="dream_posters">Akari: movies and shows</string>
     <string name="update_title">Akari %1$s is available</string>
     <string name="update_current">You have %1$s  ·  download %2$s</string>
