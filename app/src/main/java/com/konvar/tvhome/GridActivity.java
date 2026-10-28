@@ -55,6 +55,57 @@ public class GridActivity extends Activity {
     private boolean loading;
     private boolean done;
 
+    /**
+     * Grids already loaded, kept for 15 minutes: Android closes this page while a title is open (to save memory),
+     * so Back would otherwise download the whole list again.
+     */
+    private static final class Saved {
+        final long at = System.currentTimeMillis();
+        List<Catalog.Item> all;
+        java.util.Set<String> shown;
+        int page, pagesBefore;
+        boolean done, continued;
+    }
+
+    private static final java.util.Map<String, Saved> SAVED = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private String savedKey() {
+        return mode + "|" + type + "|" + source;
+    }
+
+    private void save() {
+        Saved s = new Saved();
+        s.all = new ArrayList<>(all);
+        s.shown = new java.util.HashSet<>(shown);
+        s.page = page;
+        s.pagesBefore = pagesBefore;
+        s.done = done;
+        s.continued = continued;
+        SAVED.put(savedKey(), s);
+    }
+
+    /** Puts back a grid loaded in the last 15 minutes, at once and without a request; false when there is none. */
+    private boolean restoreSaved() {
+        Saved s = SAVED.get(savedKey());
+        if (s == null || System.currentTimeMillis() - s.at > 15 * 60 * 1000L || s.all.isEmpty()) return false;
+        all.addAll(s.all);
+        shown.addAll(s.shown);
+        page = s.page;
+        pagesBefore = s.pagesBefore;
+        done = s.done;
+        continued = s.continued;
+        if (filtering()) {
+            applyFilters();
+        } else {
+            items.addAll(all);
+            adapter.notifyDataSetChanged();
+        }
+        int pos = restorePos >= 0 ? Math.min(restorePos, items.size() - 1) : 0;
+        restorePos = -1;
+        if (pos >= 0) focusAt(pos);
+        return true;
+    }
+
     /** The "Show more" card at the end of a home row. */
     static Catalog.Item moreItem(String mode, String type, String source, String title) {
         Catalog.Item it = new Catalog.Item();
@@ -118,7 +169,7 @@ public class GridActivity extends Activity {
         // Every grid of titles gets the filters; the grid of lists has nothing to filter.
         if (!lists) buildFilters();
         if (savedInstanceState != null) restorePos = savedInstanceState.getInt("focus", -1);
-        loadMore();
+        if (!restoreSaved()) loadMore();
     }
 
     /** The title focused when one was opened; the page loads as far as it to focus it again. */
@@ -195,6 +246,7 @@ public class GridActivity extends Activity {
                 loading = false;
                 if (result == null || result.isEmpty()) {
                     done = true;
+                    save();
                     // The list ended before the title that was open: focus its last one.
                     if (restorePos >= 0 && !items.isEmpty()) {
                         restorePos = -1;
@@ -205,6 +257,7 @@ public class GridActivity extends Activity {
                 page = next;
                 int start = items.size();
                 all.addAll(result);
+                save();
                 if (filtering()) {
                     applyFilters();
                     // Filters work on the whole list: keep fetching pages (up to a few hundred titles).

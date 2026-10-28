@@ -322,6 +322,17 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         list.post(() -> list.post(align));
     }
 
+    /** Scrolls just enough for the whole row to show above the bottom edge; never further. */
+    private void showWhole(RecyclerView list, int row) {
+        RecyclerView.ViewHolder h = list.findViewHolderForAdapterPosition(row);
+        if (h == null) {
+            list.smoothScrollToPosition(row);
+            return;
+        }
+        int over = h.itemView.getBottom() - (list.getHeight() - Rows.px(this, 24));
+        if (over > 0) list.smoothScrollBy(0, over, new android.view.animation.DecelerateInterpolator(1.6f), 360);
+    }
+
     private Runnable alignRunnable;
     private int alignedRow = -1;
 
@@ -723,8 +734,8 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         boolean title = "movie".equals(type) || "series".equals(type);
         if (title) preview((Catalog.Item) o);
         else endPreview();
-        // On the cast, the page's own synopsis stays (only the tagline folds).
-        if ("person".equals(type) && showDescription != null && showDescription.length() > 0) {
+        // On the cast, networks and studios, the page's own synopsis stays (only the tagline folds).
+        if (("person".equals(type) || "company".equals(type)) && showDescription != null && showDescription.length() > 0) {
             description.setText(showDescription);
             synopsisLines(4);
             synopsisVisibility(View.VISIBLE);
@@ -737,13 +748,14 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         if (row >= 0 && row != alignedRow) {
             // Only when focus changes rows: moving along a row must not move the page.
             alignedRow = row;
-            // Network and Production are short rows: on Production the page stays on Network, so both show.
-            int anchor = row;
-            Rows.Row here = rows.get(row), above = row > 0 ? rows.get(row - 1) : null;
-            if (here != null && above != null && getString(R.string.production).equals(here.title)
-                    && getString(R.string.network).equals(above.title)) anchor = row - 1;
-            alignRow(list, anchor);
-            fadeRowsAbove(list, anchor);
+            if ("company".equals(type)) {
+                // Network and Production are short logo rows: the page only scrolls as far as needed to show
+                // them and fades nothing, so the rows above (and the other logo row) stay on screen.
+                list.post(() -> list.post(() -> showWhole(list, row)));
+            } else {
+                alignRow(list, row);
+                fadeRowsAbove(list, row);
+            }
         }
         autoScrollSynopsis();
         String t = o instanceof Catalog.Item ? ((Catalog.Item) o).type : null;
