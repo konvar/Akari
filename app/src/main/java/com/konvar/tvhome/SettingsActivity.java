@@ -816,16 +816,110 @@ public class SettingsActivity extends Activity {
         card("Screensaver", "Akari: movies and shows  ·  starts after " + now.toLowerCase(java.util.Locale.ROOT)
                 + " without a key press  ·  press to change", chevron(), v -> {
             if (!Settings.System.canWrite(this)) {
-                // Android asks once to let Akari change system settings.
-                try {
-                    open(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, android.net.Uri.parse("package:" + getPackageName())));
-                    Toast.makeText(this, "Allow Akari to modify system settings, then come back.", Toast.LENGTH_LONG).show();
-                } catch (Exception e) {
-                    Toast.makeText(this, "This TV has no setting for it. From a computer: adb shell appops set "
-                            + getPackageName() + " WRITE_SETTINGS allow", Toast.LENGTH_LONG).show();
-                }
+                screensaverHelp();
                 return;
             }
+            pickScreensaverDelay(now);
+        });
+    }
+
+    /** Set when the user went to allow "Modify system settings": back here, the delay picker opens by itself. */
+    private boolean screensaverPending;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (screensaverPending && Settings.System.canWrite(this)) {
+            screensaverPending = false;
+            int minutes = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, 600_000) / 60_000;
+            pickScreensaverDelay(minutes >= 60 * 24 ? "Never" : minutes + (minutes == 1 ? " minute" : " minutes"));
+        }
+    }
+
+    /**
+     * Android has no "agree" popup for this: it is granted on a system page. This explains the two ways in plain
+     * steps: the TV's own screensaver page (no permission at all), or allowing Akari to set it.
+     */
+    private void screensaverHelp() {
+        android.app.Dialog d = new android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundResource(R.drawable.update_panel);
+        int pad = Rows.px(this, 28);
+        panel.setPadding(pad, pad, pad, pad);
+        TextView t = new TextView(this);
+        t.setText("Turn on Akari's screensaver");
+        t.setTextSize(22);
+        t.setTextColor(0xFFFFFFFF);
+        t.setTypeface(getResources().getFont(R.font.outfit));
+        panel.addView(t);
+        TextView body = new TextView(this);
+        body.setText("Either way takes a few seconds:\n\n"
+                + "•  Screensaver settings: choose “Akari: movies and shows” and when it starts.\n\n"
+                + "•  Let Akari set it: switch Akari on in the list that opens, then press Back. "
+                + "The delay picker opens here by itself.");
+        body.setTextSize(14);
+        body.setTextColor(0xF2FFFFFF);
+        body.setLineSpacing(0, 1.25f);
+        body.setTypeface(getResources().getFont(R.font.outfit));
+        body.setPadding(0, Rows.px(this, 14), 0, Rows.px(this, 20));
+        panel.addView(body);
+        LinearLayout buttons = new LinearLayout(this);
+        panel.addView(buttons);
+        TextView dream = dialogButton(buttons, "Screensaver settings");
+        TextView allow = dialogButton(buttons, "Let Akari set it");
+        TextView cancel = dialogButton(buttons, "Cancel");
+        dream.setOnClickListener(v -> {
+            d.dismiss();
+            if (!tryOpen(new Intent(Settings.ACTION_DREAM_SETTINGS))) {
+                Toast.makeText(this, "This TV has no screensaver page. Use “Let Akari set it”.", Toast.LENGTH_LONG).show();
+            }
+        });
+        allow.setOnClickListener(v -> {
+            d.dismiss();
+            screensaverPending = true;
+            if (!tryOpen(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, android.net.Uri.parse("package:" + getPackageName())))
+                    && !tryOpen(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS))) {
+                screensaverPending = false;
+                Toast.makeText(this, "This TV hides that page. From a computer: adb shell appops set "
+                        + getPackageName() + " WRITE_SETTINGS allow", Toast.LENGTH_LONG).show();
+            }
+        });
+        cancel.setOnClickListener(v -> d.dismiss());
+        d.setContentView(panel);
+        if (d.getWindow() != null) {
+            d.getWindow().setLayout(Rows.px(this, 600), android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+            d.getWindow().setGravity(android.view.Gravity.CENTER);
+            d.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            d.getWindow().setDimAmount(0.6f);
+        }
+        d.show();
+        dream.requestFocus();
+    }
+
+    private TextView dialogButton(LinearLayout row, String label) {
+        TextView b = new TextView(this, null, 0, R.style.TopButton);
+        b.setText(label);
+        b.setGravity(android.view.Gravity.CENTER);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Rows.px(this, 44), 1);
+        if (row.getChildCount() > 0) lp.setMarginStart(Rows.px(this, 10));
+        row.addView(b, lp);
+        return b;
+    }
+
+    /** Starts a system page; false when this TV does not have it. */
+    private boolean tryOpen(Intent i) {
+        try {
+            if (i.resolveActivity(getPackageManager()) == null) return false;
+            startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void pickScreensaverDelay(String now) {
+        {
             java.util.List<String> options = java.util.Arrays.asList("1 minute", "2 minutes", "5 minutes", "10 minutes",
                     "15 minutes", "30 minutes", "Never");
             Picker.single(this, "Start the screensaver after", options, now, chosen -> {
@@ -841,7 +935,7 @@ public class SettingsActivity extends Activity {
                 }
                 showSection(section);
             });
-        });
+        }
     }
 
     // ---- sign-in flows ----
