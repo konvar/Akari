@@ -42,6 +42,8 @@ jobs:
           AKARI_KEY_ALIAS: ${{ secrets.AKARI_KEY_ALIAS }}
           AKARI_KEY_PASSWORD: ${{ secrets.AKARI_KEY_PASSWORD }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          NUVIO_SUPABASE_URL: ${{ secrets.NUVIO_SUPABASE_URL }}
+          NUVIO_SUPABASE_ANON_KEY: ${{ secrets.NUVIO_SUPABASE_ANON_KEY }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
