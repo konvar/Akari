@@ -66,6 +66,7 @@ final class Updater {
             if (r == null) return;
             p.edit().putLong("checked", System.currentTimeMillis()).putString("checked_by", BuildConfig.VERSION_NAME).apply();
             android.util.Log.i("TvHomeUpdate", "latest " + r.version + ", this " + BuildConfig.VERSION_NAME);
+            p.edit().putString("latest", r.version).apply();
             if (!newer(r.version, BuildConfig.VERSION_NAME) || r.tag.equals(p.getString("skipped", ""))) return;
             Net.MAIN.post(() -> {
                 if (!a.isFinishing() && !a.isDestroyed()) show(a, r);
@@ -82,6 +83,12 @@ final class Updater {
         prefs(c).edit().putBoolean("automatic", on).apply();
     }
 
+    /** The newer version the last check found, for the quick panel; null when none (or a local build). */
+    static String knownNewer(Context c) {
+        String v = prefs(c).getString("latest", null);
+        return BuildConfig.UPDATES && v != null && newer(v, BuildConfig.VERSION_NAME) ? v : null;
+    }
+
     /** When updates were last looked for (0: never). */
     static long lastChecked(Context c) {
         return prefs(c).getLong("checked", 0);
@@ -95,7 +102,7 @@ final class Updater {
         Toast.makeText(a, R.string.update_checking, Toast.LENGTH_SHORT).show();
         Net.API.execute(() -> {
             Release r = latest();
-            if (r != null) prefs(a).edit().putLong("checked", System.currentTimeMillis())
+            if (r != null) prefs(a).edit().putString("latest", r.version).putLong("checked", System.currentTimeMillis())
                     .putString("checked_by", BuildConfig.VERSION_NAME).remove("later_until").apply();
             Net.MAIN.post(() -> {
                 if (a.isFinishing() || a.isDestroyed()) return;

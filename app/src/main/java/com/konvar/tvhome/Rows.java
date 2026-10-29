@@ -203,6 +203,7 @@ final class Rows {
         @Override
         public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.row, parent, false);
+            Look.row(v);
             return new Holder(v);
         }
 
@@ -393,7 +394,9 @@ final class Rows {
                     : viewType == PERSON ? R.layout.card_person : viewType == SEASON ? R.layout.card_season
                     : viewType == COMPANY ? R.layout.card_company
                     : R.layout.card_poster;
-            return new Holder(LayoutInflater.from(parent.getContext()).inflate(layout, parent, false));
+            View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
+            Look.card(v);
+            return new Holder(v);
         }
 
         @Override
@@ -404,7 +407,10 @@ final class Rows {
                 Apps.Entry e = (Apps.Entry) item;
                 h.label.setText(e.label);
                 h.label.setVisibility(e.hasBanner ? View.GONE : View.VISIBLE);
-                Apps.loadArt(h.image, e, px(c, 160), px(c, 90));
+                // Drawn at the tile's real size (Card size can make it smaller or larger than 160 x 90).
+                android.view.ViewGroup.LayoutParams tl = h.itemView.getLayoutParams();
+                int tw = tl != null && tl.width > 0 ? tl.width : px(c, 160), th = tl != null && tl.height > 0 ? tl.height : px(c, 90);
+                Apps.loadArt(h.image, e, tw, th);
                 styleApp(h.itemView, e == moving);
             } else {
                 Catalog.Item it = (Catalog.Item) item;

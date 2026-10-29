@@ -226,9 +226,18 @@ final class Trakt {
         throw new IOException("device token HTTP " + r.code);
     }
 
+    /**
+     * Trakt sometimes answers that a token lasts 24 hours (86400 s) while it really lasts 7 days; taken at its word,
+     * the token was "about to expire" on every call, so it was renewed over and over and the renewals raced each
+     * other until Trakt refused one and Akari signed out. As in NuvioTV, that value is read as 7 days.
+     */
+    private static long lifetime(JSONObject tokens) {
+        long in = tokens.optLong("expires_in", 604_800);
+        return in == 86_400 ? 604_800 : in;
+    }
+
     private static void store(Context c, JSONObject tokens) {
-        long expires = (tokens.optLong("created_at", System.currentTimeMillis() / 1000)
-                + tokens.optLong("expires_in", 7776000)) * 1000L;
+        long expires = (tokens.optLong("created_at", System.currentTimeMillis() / 1000) + lifetime(tokens)) * 1000L;
         prefs(c).edit()
                 .putString("access", tokens.optString("access_token"))
                 .putString("refresh", tokens.optString("refresh_token"))
@@ -236,24 +245,51 @@ final class Trakt {
                 .apply();
     }
 
+    /** One renewal at a time: each renewal makes the previous refresh token invalid. */
+    private static final Object REFRESH_LOCK = new Object();
+
     private static String accessToken(Context c) throws IOException, JSONException {
         SharedPreferences p = prefs(c);
         String access = p.getString("access", null);
         if (access == null) return null;
-        if (System.currentTimeMillis() < p.getLong("expires", 0) - 24 * 3600 * 1000L) return access;
-        JSONObject body = new JSONObject()
-                .put("refresh_token", p.getString("refresh", ""))
-                .put("client_id", clientId())
-                .put("client_secret", clientSecret())
-                .put("redirect_uri", "urn:ietf:wg:oauth:2.0:oob")
-                .put("grant_type", "refresh_token");
-        Net.Response r = Net.json("POST", API + "/oauth/token", new HashMap<>(), body.toString());
-        if (r.code == 200) {
-            store(c, new JSONObject(r.body));
-            return p.getString("access", null);
+        // Renewed only in its last hour, as NuvioTV does (one minute there); otherwise used as it is.
+        if (System.currentTimeMillis() < p.getLong("expires", 0) - 3600 * 1000L) return access;
+        return refresh(c, access);
+    }
+
+    /** Renews the token; a token another request renewed meanwhile is used as it is. */
+    private static String refresh(Context c, String stale) throws IOException, JSONException {
+        synchronized (REFRESH_LOCK) {
+            SharedPreferences p = prefs(c);
+            String now = p.getString("access", null);
+            if (now == null) return null;
+            if (!now.equals(stale) && System.currentTimeMillis() < p.getLong("expires", 0) - 3600 * 1000L) return now;
+            JSONObject body = new JSONObject()
+                    .put("refresh_token", p.getString("refresh", ""))
+                    .put("client_id", clientId())
+                    .put("client_secret", clientSecret())
+                    .put("redirect_uri", "urn:ietf:wg:oauth:2.0:oob")
+                    .put("grant_type", "refresh_token");
+            Net.Response r;
+            try {
+                r = Net.json("POST", API + "/oauth/token", new HashMap<>(), body.toString());
+            } catch (IOException e) {
+                // No network (TV just woke up): keep the sign-in and the current token.
+                android.util.Log.w("TvHomeTrakt", "token renewal: no network, keeping sign-in");
+                return now;
+            }
+            if (r.code == 200) {
+                store(c, new JSONObject(r.body));
+                android.util.Log.i("TvHomeTrakt", "token renewed");
+                return p.getString("access", null);
+            }
+            android.util.Log.w("TvHomeTrakt", "token renewal HTTP " + r.code);
+            // Only a refusal of the refresh token itself ends the sign-in; anything else (rate limit, server
+            // trouble) keeps it for the next try.
+            if (r.code == 400 || r.code == 401 || r.code == 403) signOut(c);
+            else return now;
+            return null;
         }
-        if (r.code == 400 || r.code == 401) signOut(c);
-        return null;
     }
 
     /** Every page of a paginated list: Trakt hands out watched history 100 entries at a time by default. */

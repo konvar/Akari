@@ -149,7 +149,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         findViewById(R.id.searchPill).setOnClickListener(v -> openSearch());
         weatherButton = findViewById(R.id.weatherButton);
         weatherButton.setOnClickListener(v -> showForecast());
-        findViewById(R.id.settingsButton).setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        // The gear opens the quick panel (tiles, Akari's settings and Android's), as on Google TV.
+        findViewById(R.id.settingsButton).setOnClickListener(v -> QuickPanel.show(this));
         // Right on Settings, the last button of the top bar, stays there instead of jumping to a row below.
         findViewById(R.id.settingsButton).setNextFocusRightId(R.id.settingsButton);
 
@@ -551,19 +552,8 @@ public class MainActivity extends Activity implements Rows.Listener {
                 });
                 return;
             } else {
+                // Not signed in: no "Connect Trakt" card in Continue Watching; tracking is set up in Settings > Tracking.
                 rows.addAll(Channels.load(app, pkg));
-                if (Trakt.configured() && !Trakt.signedIn(app)) {
-                    Catalog.Item connect = new Catalog.Item();
-                    connect.name = app.getString(R.string.trakt_connect);
-                    connect.subtitle = app.getString(R.string.trakt_connect_hint);
-                    connect.launch = new Intent(ACTION_TRAKT_LOGIN);
-                    connect.description = app.getString(R.string.trakt_connect_description);
-                    if (rows.isEmpty()) {
-                        rows.add(new Rows.Row(app.getString(R.string.continue_watching), java.util.Collections.singletonList(connect)));
-                    } else {
-                        rows.get(0).items.add(0, connect);
-                    }
-                }
             }
             boolean badgesChanged = trakt != null;
             if (trakt != null) {

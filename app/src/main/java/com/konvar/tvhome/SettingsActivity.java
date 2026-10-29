@@ -57,8 +57,10 @@ public class SettingsActivity extends Activity {
         getWindow().setFormat(PixelFormat.RGBA_8888);
         setContentView(layout());
         for (int i = 0; i < SECTIONS.length; i++) addNav(i);
-        showSection(0);
-        nav.getChildAt(0).requestFocus();
+        // Opened on one section from the quick panel (the Screensaver tile opens System).
+        int start = java.util.Arrays.asList(SECTIONS).indexOf(getIntent().getStringExtra("section"));
+        showSection(Math.max(0, start));
+        nav.getChildAt(Math.max(0, start)).requestFocus();
     }
 
     // ---- layout ----
@@ -283,6 +285,7 @@ public class SettingsActivity extends Activity {
         addStartCard();
         addCountdownCard();
         addTrailerCard();
+        addLookCards();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
     }
 
@@ -312,6 +315,21 @@ public class SettingsActivity extends Activity {
                 });
             });
         });
+    }
+
+    /** Card size and spacing on Home: bigger cards for big screens or far sofas, fewer or more rows on screen. */
+    private void addLookCards() {
+        String size = Look.SIZES[Look.size(this)], gap = Look.SPACINGS[Look.spacing(this)];
+        card("Card size", size + "  \u00b7  press to change", chevron(), v ->
+                Picker.single(this, "Card size", java.util.Arrays.asList(Look.SIZES), size, c -> {
+                    Look.setSize(this, java.util.Arrays.asList(Look.SIZES).indexOf(c.iterator().next()));
+                    showSection(0);
+                }));
+        card("Spacing", gap + "  \u00b7  how many rows fit on screen  \u00b7  press to change", chevron(), v ->
+                Picker.single(this, "Spacing", java.util.Arrays.asList(Look.SPACINGS), gap, c -> {
+                    Look.setSpacing(this, java.util.Arrays.asList(Look.SPACINGS).indexOf(c.iterator().next()));
+                    showSection(0);
+                }));
     }
 
     private String startTitle() {
@@ -427,9 +445,10 @@ public class SettingsActivity extends Activity {
         addStartCard();
         addCountdownCard();
         addTrailerCard();
+        addLookCards();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
-        // Children 0-2 are the start-row, countdown and trailer cards; row cards follow them.
-        View v = content.getChildAt(Math.max(0, Math.min(focus + 3, content.getChildCount() - 1)));
+        // Children 0-4 are the start-row, countdown, trailer, card-size and spacing cards; row cards follow them.
+        View v = content.getChildAt(Math.max(0, Math.min(focus + 5, content.getChildCount() - 1)));
         if (v != null) v.requestFocus();
     }
 
