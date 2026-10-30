@@ -640,7 +640,6 @@ final class Trakt {
         SimpleDateFormat when = new SimpleDateFormat("EEE d MMM, HH:mm", Locale.getDefault());
         List<Catalog.Item> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        Set<String> done = watchedEpisodes(token);
         long now = System.currentTimeMillis();
         for (int i = 0; i < cal.length(); i++) {
             JSONObject e = cal.getJSONObject(i);
@@ -653,7 +652,11 @@ final class Trakt {
             if (aired <= now) continue;
             // Already watched (it came out early somewhere): skip it, so the show's next episode shows instead.
             JSONObject ep = e.optJSONObject("episode");
-            if (ep != null && done.contains(imdb + ":" + ep.optInt("season") + ":" + ep.optInt("number"))) continue;
+            if (ep != null && watchedEpisode(c, imdb, ep.optInt("season"), ep.optInt("number"))) {
+                android.util.Log.i("TvHomeTrakt", "upcoming: skip watched " + show.optString("title") + " S"
+                        + ep.optInt("season") + "E" + ep.optInt("number"));
+                continue;
+            }
             if (!seen.add(imdb)) continue;
             Catalog.Item it = base(show, imdb, false);
             episode(it, e.optJSONObject("episode"));
@@ -668,37 +671,50 @@ final class Trakt {
         return items;
     }
 
-    private static Set<String> watchedEpisodeKeys;
-    private static long watchedEpisodesAt;
+    /** Watched episodes of one show (from its Trakt progress), kept for an hour. */
+    private static final Map<String, Object[]> SHOW_WATCHED = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** Every watched episode ("imdb:season:episode"), from one Trakt call, kept for 30 minutes. */
-    private static Set<String> watchedEpisodes(String token) {
-        if (watchedEpisodeKeys != null && System.currentTimeMillis() - watchedEpisodesAt < 30 * 60 * 1000L) {
-            return watchedEpisodeKeys;
+    /**
+     * Whether you have already watched this episode (for example one that came out early). Asked per show, from the
+     * show's own progress: Trakt's paged list of watched shows no longer carries the episodes.
+     */
+    private static boolean watchedEpisode(Context c, String imdb, int season, int episode) {
+        Object[] hit = SHOW_WATCHED.get(imdb);
+        Set<String> watched;
+        if (hit != null && System.currentTimeMillis() - (Long) hit[0] < 3600 * 1000L) {
+            @SuppressWarnings("unchecked") Set<String> cached = (Set<String>) hit[1];
+            watched = cached;
+        } else {
+            watched = new HashSet<>(showProgress(c, imdb).watched);
+            // Trakt's progress counts aired episodes only; one watched before its air date is only in the history.
+            watched.addAll(historyEpisodes(c, imdb));
+            SHOW_WATCHED.put(imdb, new Object[]{System.currentTimeMillis(), watched});
+            android.util.Log.i("TvHomeTrakt", "upcoming: " + imdb + " has " + watched.size() + " watched episodes, "
+                    + "S" + season + "E" + episode + (watched.contains(season + ":" + episode) ? " watched" : " not watched"));
         }
+        return watched.contains(season + ":" + episode);
+    }
+
+    /** Episodes of one show in your watch history ("season:episode"), the latest 100. */
+    private static Set<String> historyEpisodes(Context c, String imdb) {
         Set<String> out = new HashSet<>();
         try {
-            JSONArray shows = getArray("/sync/watched/shows", token);
-            for (int i = 0; i < shows.length(); i++) {
-                JSONObject w = shows.getJSONObject(i);
-                JSONObject show = w.optJSONObject("show");
-                String imdb = show != null ? imdbOf(show) : null;
-                JSONArray seasons = w.optJSONArray("seasons");
-                for (int s = 0; imdb != null && seasons != null && s < seasons.length(); s++) {
-                    JSONObject season = seasons.getJSONObject(s);
-                    JSONArray eps = season.optJSONArray("episodes");
-                    for (int k = 0; eps != null && k < eps.length(); k++) {
-                        out.add(imdb + ":" + season.optInt("number") + ":" + eps.getJSONObject(k).optInt("number"));
-                    }
-                }
+            String token = accessToken(c);
+            if (token == null) return out;
+            JSONArray h = getArray("/sync/history/shows/" + imdb + "?limit=100", token);
+            for (int i = 0; i < h.length(); i++) {
+                JSONObject ep = h.getJSONObject(i).optJSONObject("episode");
+                if (ep != null) out.add(ep.optInt("season") + ":" + ep.optInt("number"));
             }
         } catch (Exception e) {
-            android.util.Log.w("TvHomeTrakt", "watched episodes: " + e);
-            return watchedEpisodeKeys != null ? watchedEpisodeKeys : out;
+            android.util.Log.w("TvHomeTrakt", "history " + imdb + ": " + e);
         }
-        watchedEpisodeKeys = out;
-        watchedEpisodesAt = System.currentTimeMillis();
         return out;
+    }
+
+    /** Forget a show's watched episodes (after one was marked), so Upcoming asks again. */
+    static void forgetWatched(String imdb) {
+        SHOW_WATCHED.remove(imdb);
     }
 
     /** Episodes of watched shows that aired in the last two days; they open in the content app to play. */
