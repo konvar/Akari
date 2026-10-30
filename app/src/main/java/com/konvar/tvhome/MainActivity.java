@@ -236,9 +236,12 @@ public class MainActivity extends Activity implements Rows.Listener {
         if (leftRowTitle != null) {
             lastRowTitle = leftRowTitle;
             lastItemKey = leftItemKey;
-            rowList.post(this::restoreLastOrTop);
+            long asked = SystemClock.uptimeMillis();
+            rowList.post(() -> {
+                if (lastKeyAt <= asked) restoreLastOrTop();
+            });
             rowList.postDelayed(() -> {
-                restoreLastOrTop();
+                if (lastKeyAt <= asked) restoreLastOrTop();
                 leftRowTitle = null;
             }, 250);
         }
@@ -354,12 +357,17 @@ public class MainActivity extends Activity implements Rows.Listener {
         if (lm instanceof LinearLayoutManager) ((LinearLayoutManager) lm).scrollToPositionWithOffset(row, 0);
         else rowList.scrollToPosition(row);
         // Wait for the refreshed rows to lay out, then put that row back at its start and focus its first card.
+        // A key pressed meanwhile wins: a refresh right after the TV starts must not pull focus back to the first
+        // card once you have moved.
+        long asked = SystemClock.uptimeMillis();
         rowList.postDelayed(() -> {
+            if (lastKeyAt > asked) return;
             RecyclerView.ViewHolder h = rowList.findViewHolderForAdapterPosition(row);
             if (!(h instanceof Rows.RowAdapter.Holder)) return;
             RecyclerView cards = ((Rows.RowAdapter.Holder) h).cards;
             cards.scrollToPosition(0);
             cards.postDelayed(() -> {
+                if (lastKeyAt > asked) return;
                 View first = cards.getLayoutManager() != null ? cards.getLayoutManager().findViewByPosition(0) : null;
                 if (first != null) first.requestFocus();
                 syncHeroToFocus();
