@@ -82,7 +82,7 @@ final class RowCache {
         j.put("id", it.id).put("type", it.type).put("name", it.name).put("poster", it.poster)
                 .put("background", it.background).put("logo", it.logo).put("year", it.year)
                 .put("rating", it.rating).put("genres", it.genres).put("description", it.description)
-                .put("subtitle", it.subtitle).put("progress", it.progress).put("order", it.order)
+                .put("subtitle", it.subtitle).put("progress", it.progress).put("left", it.episodesLeft).put("order", it.order)
                 .put("season", it.season).put("episode", it.episode).put("episodeTitle", it.episodeTitle)
                 .put("thumb", it.thumb).put("kind", it.kind).put("playbackId", it.playbackId)
                 .put("runtime", it.runtime).put("airs", it.airs);
@@ -104,6 +104,7 @@ final class RowCache {
         it.description = opt(j, "description");
         it.subtitle = opt(j, "subtitle");
         it.progress = j.optInt("progress");
+        it.episodesLeft = j.optInt("left");
         it.order = j.optLong("order");
         it.season = j.optInt("season");
         it.episode = j.optInt("episode");

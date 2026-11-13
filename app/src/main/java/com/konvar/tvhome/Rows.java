@@ -169,7 +169,7 @@ final class Rows {
                 if (x instanceof Catalog.Item && y instanceof Catalog.Item) {
                     Catalog.Item p = (Catalog.Item) x, q = (Catalog.Item) y;
                     if (!String.valueOf(p.id).equals(String.valueOf(q.id)) || !String.valueOf(p.name).equals(String.valueOf(q.name))
-                            || p.progress != q.progress || !String.valueOf(p.subtitle).equals(String.valueOf(q.subtitle))) return false;
+                            || p.progress != q.progress || p.episodesLeft != q.episodesLeft || !String.valueOf(p.subtitle).equals(String.valueOf(q.subtitle))) return false;
                 } else if (x instanceof Apps.Entry && y instanceof Apps.Entry) {
                     if (!((Apps.Entry) x).pkg.equals(((Apps.Entry) y).pkg)) return false;
                 } else if (x != y) {
@@ -259,6 +259,8 @@ final class Rows {
         static final int PERSON = 6;
         static final int SEASON = 7;
         static final int COMPANY = 8;
+        /** Parental guide and comment cards on the details page (card_note). */
+        static final int NOTE = 9;
 
         /** The app tile being moved (hold OK on an app), and whether OK was pressed again since it was picked up. */
         static Object moving;
@@ -383,6 +385,8 @@ final class Rows {
             if ("person".equals(it.type)) return PERSON;
             if ("season".equals(it.type)) return SEASON;
             if ("company".equals(it.type)) return COMPANY;
+            if ("spotlight".equals(it.type)) return WIDE;
+            if ("guide".equals(it.type) || "comment".equals(it.type)) return NOTE;
             return it.launch != null ? WIDE : POSTER;
         }
 
@@ -393,6 +397,7 @@ final class Rows {
                     : viewType == MORE ? R.layout.card_more : viewType == LIST ? R.layout.card_list
                     : viewType == PERSON ? R.layout.card_person : viewType == SEASON ? R.layout.card_season
                     : viewType == COMPANY ? R.layout.card_company
+                    : viewType == NOTE ? R.layout.card_note
                     : R.layout.card_poster;
             View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
             Look.card(v);
@@ -445,6 +450,30 @@ final class Rows {
                 if ("season".equals(it.type)) {
                     h.subtitle.setText(it.subtitle);
                     h.check.setVisibility(it.watched ? View.VISIBLE : View.GONE);
+                    return;
+                }
+                if ("spotlight".equals(it.type)) {
+                    // A Spotlight tile: a wide card with its picture, name and line, like Continue Watching.
+                    if (h.check != null) h.check.setVisibility(View.GONE);
+                    if (h.progress != null) h.progress.setVisibility(View.GONE);
+                    if (h.countdown != null) h.countdown.setVisibility(View.GONE);
+                    h.subtitle.setText(it.subtitle);
+                    h.subtitle.setVisibility(View.VISIBLE);
+                    ImageLoader.load(h.image, it.thumb, px(c, 208), px(c, 117));
+                    return;
+                }
+                if ("guide".equals(it.type) || "comment".equals(it.type)) {
+                    boolean guide = "guide".equals(it.type);
+                    ViewGroup.LayoutParams nl = h.itemView.getLayoutParams();
+                    nl.width = px(c, guide ? 170 : 340);
+                    nl.height = px(c, guide ? 74 : 150);
+                    h.itemView.setLayoutParams(nl);
+                    h.label.setText(it.name);
+                    h.subtitle.setText(it.subtitle);
+                    h.subtitle.setMaxLines(guide ? 1 : 5);
+                    // Severity in its colour (severe red, moderate amber, mild green); comments in soft white,
+                    // a hidden spoiler dimmer.
+                    h.subtitle.setTextColor(guide ? ParentalGuide.color(it.order) : it.watched ? 0x80FFFFFF : 0xB3FFFFFF);
                     return;
                 }
                 if ("company".equals(it.type)) {
@@ -508,18 +537,31 @@ final class Rows {
         }
 
         static String cwBadgeText(Catalog.Item it) {
+            String text = null;
+            // As in Nuvio: how many aired episodes are still ahead, this one included. Kept short so the badge
+            // stays a small corner tag: "12 eps left", "New · 12 eps", "45m · 12 eps".
+            String eps = episodesLeftText(it);
             if (it.progress > 0) {
+                String time;
                 if (it.runtime > 0) {
                     int left = Math.max(1, Math.round(it.runtime * (100 - it.progress) / 100f));
-                    return left >= 60 ? (left / 60) + "h " + (left % 60) + "m left" : left + "m left";
+                    time = left >= 60 ? (left / 60) + "h " + (left % 60) + "m" : left + "m";
+                } else {
+                    time = (100 - it.progress) + "%";
                 }
-                return (100 - it.progress) + "% left";
-            }
-            if (it.season > 0) {
+                text = eps == null ? time + " left" : time + " · " + eps;
+            } else if (it.season > 0) {
                 boolean fresh = it.airs > 0 && System.currentTimeMillis() - it.airs < 7 * 24 * 3600 * 1000L;
-                return fresh ? "New episode" : "Up next";
+                if (eps == null) text = fresh ? "New episode" : "Up next";
+                else text = fresh ? "New · " + eps : eps + " left";
             }
-            return null;
+            return text;
+        }
+
+        /** "12 eps" on a show's Continue Watching card; nothing when it is the last one or unknown. */
+        static String episodesLeftText(Catalog.Item it) {
+            if (!"cw".equals(it.kind) || !"series".equals(it.type) || it.episodesLeft <= 1) return null;
+            return it.episodesLeft + " eps";
         }
 
         static final int COUNTDOWN_OFF = 4;
@@ -687,9 +729,10 @@ final class Rows {
                         a.listener.onItemFocused(a.row.items.get(p), a.rowHolder.getBindingAdapterPosition());
                         // The cards next to this one get their artwork and data ready while it has focus.
                         List<Object> rowItems = a.row.items;
+                        // Not for cards passed while a key is held: only where focus settles (FocusPace).
                         x.postDelayed(() -> {
-                            if (x.isFocused()) Prefetch.around(x.getContext(), rowItems, p);
-                        }, 200);
+                            if (x.isFocused() && !FocusPace.quick()) Prefetch.around(x.getContext(), rowItems, p);
+                        }, 200 + FocusPace.extra());
                     }
                 });
             }

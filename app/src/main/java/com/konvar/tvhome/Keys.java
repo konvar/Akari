@@ -16,6 +16,8 @@ final class Keys {
     static final String TRAKT_ID = "trakt_id";
     static final String TRAKT_SECRET = "trakt_secret";
     static final String SIMKL_ID = "simkl_id";
+    /** Optional Google Gemini key: Spotlight's "Ask" tile and AI picks. */
+    static final String GEMINI = "gemini";
 
     static Context app;
 
@@ -46,7 +48,7 @@ final class Keys {
 
     /** Cleans a key saved before {@link #set} trimmed extra words. */
     static void tidy() {
-        for (String k : new String[]{MDBLIST, OMDB, TMDB, TRAKT_ID, TRAKT_SECRET, SIMKL_ID}) {
+        for (String k : new String[]{MDBLIST, OMDB, TMDB, TRAKT_ID, TRAKT_SECRET, SIMKL_ID, GEMINI}) {
             String v = get(k);
             if (v.indexOf(' ') > 0) set(k, v);
         }

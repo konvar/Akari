@@ -98,32 +98,77 @@ final class Tracking {
         return connected(c, p) ? p : NONE;
     }
 
-    /** Continue Watching from a non-Trakt provider; also refreshes the watched checkmarks. */
+    /**
+     * Upcoming for providers other than Trakt, worked out with Continue Watching from the episodes you watched
+     * (Trakt has its own calendar). Empty until the first load.
+     */
+    static volatile List<Catalog.Item> lastUpcoming = new ArrayList<>();
+
+    /** Continue Watching from a non-Trakt provider; also refreshes the watched checkmarks and {@link #lastUpcoming}. */
     static List<Catalog.Item> continueWatching(Context c, String provider, String pkg) throws Exception {
         long started = System.currentTimeMillis();
         List<Catalog.Item> items;
         Set<String> watched = new HashSet<>();
+        List<Episodes.Show> shows = new ArrayList<>();
         switch (provider) {
             case SIMKL:
-                items = Simkl.continueWatching(c, pkg, watched);
+                items = Simkl.continueWatching(c, pkg, watched, shows);
                 break;
             case MDBLIST:
-                items = mdbListContinue(c, pkg, watched);
+                items = mdbListContinue(c, pkg, watched, shows);
                 break;
             case NUVIO:
-                items = NuvioCloud.continueWatching(c, pkg, watched);
+                items = NuvioCloud.continueWatching(c, pkg, watched, shows);
                 break;
             default:
                 return null;
         }
+        addNextUp(c, pkg, items, shows, watched);
         items.sort((a, b) -> Long.compare(b.order, a.order));
         items = withinWindow(c, items);
         Trakt.watchedIds = watched;
         loadMyRatings(c, provider);
         Trakt.fillThumbs(c, items, null);
+        Trakt.fillThumbs(c, lastUpcoming, null);
         Log.i(TAG, label(provider) + ": " + items.size() + " in progress, " + watched.size() + " watched, "
                 + (System.currentTimeMillis() - started) + " ms");
         return items;
+    }
+
+    /**
+     * The shared episode rules ({@link Episodes}): Next up for shows with nothing paused, Upcoming, finished shows'
+     * checkmarks, and "N episodes left". A Next up card whose episode has not aired yet moves to Upcoming.
+     */
+    private static void addNextUp(Context c, String pkg, List<Catalog.Item> items, List<Episodes.Show> shows,
+                                  Set<String> watched) {
+        Set<String> onRow = new HashSet<>();
+        for (Catalog.Item it : items) onRow.add(it.id);
+        Episodes.Result r = Episodes.resolve(c, pkg, shows, onRow);
+        long now = System.currentTimeMillis();
+        // The provider's own Next up cards (Simkl) for an episode that is not out yet belong in Upcoming.
+        items.removeIf(it -> {
+            if (!"series".equals(it.type) || it.progress > 0 || it.season <= 0) return false;
+            List<Episodes.Ep> list = Episodes.list(c, it.id);
+            for (Episodes.Ep ep : list) {
+                if (ep.season == it.season && ep.episode == it.episode) return !Episodes.aired(list, ep, now);
+            }
+            return false;
+        });
+        items.addAll(r.nextUp);
+        Episodes.fillNames(c, items);
+        Episodes.fillNames(c, r.upcoming);
+        for (Catalog.Item it : items) {
+            if (it.launch == null) finish(it, pkg);
+            // Paused episodes are counted here; the engine already counted its own cards.
+            if (it.episodesLeft == 0 && "series".equals(it.type) && it.season > 0) {
+                it.episodesLeft = Episodes.leftFrom(Episodes.list(c, it.id), it.season, it.episode, now);
+            }
+        }
+        for (Catalog.Item it : r.upcoming) it.launch = DetailsActivity.intent(c, it);
+        // A show with an aired, unwatched episode is not finished, whatever the provider said (Nuvio's air-day rule).
+        watched.addAll(r.finished);
+        for (Catalog.Item it : items) if ("series".equals(it.type)) watched.remove(it.id);
+        lastUpcoming = r.upcoming;
     }
 
     /** Which episodes of a show are watched, from the provider in use (the details page's checkmarks). */
@@ -224,7 +269,8 @@ final class Tracking {
 
     private static final String MDB = "https://api.mdblist.com";
 
-    private static List<Catalog.Item> mdbListContinue(Context c, String pkg, Set<String> watched) throws Exception {
+    private static List<Catalog.Item> mdbListContinue(Context c, String pkg, Set<String> watched, List<Episodes.Show> shows)
+            throws Exception {
         String key = "apikey=" + Keys.get(Keys.MDBLIST);
         Map<String, String> h = new HashMap<>();
         h.put("Accept", "application/json");
@@ -247,12 +293,27 @@ final class Tracking {
             finish(it, pkg);
             items.add(it);
         }
-        // Watched movies get their checkmarks; shows only when MDBList lists them as completed.
+        // Watched movies get their checkmarks; shows only when MDBList lists them as completed. Watched episodes
+        // feed Next up and Upcoming.
+        Map<String, Episodes.Show> byShow = new HashMap<>();
         for (int page = 1; page <= 20; page++) {
             Net.Response w = Net.json("GET", MDB + "/sync/watched?" + key + "&page=" + page + "&limit=1000", h, null);
             if (w.code != 200) break;
             List<JSONObject> list = rows(w.body);
             for (JSONObject e : list) {
+                JSONObject wep = e.optJSONObject("episode");
+                JSONObject wshow = e.optJSONObject("show");
+                if (wshow == null && wep != null) wshow = wep.optJSONObject("show");
+                String showId = wshow != null ? Trakt.imdbOf(wshow) : null;
+                if (wep != null && showId != null) {
+                    Episodes.Show sh = byShow.get(showId);
+                    if (sh == null) byShow.put(showId, sh = new Episodes.Show(showId));
+                    if (sh.watched == null) sh.watched = new HashSet<>();
+                    sh.title = wshow.optString("title", sh.title);
+                    sh.watched.add(wep.optInt("season") + ":" + wep.optInt("number", wep.optInt("episode")));
+                    sh.lastWatched = Math.max(sh.lastWatched,
+                            Trakt.time(e.optString("last_watched_at", e.optString("watched_at", ""))));
+                }
                 JSONObject m = e.optJSONObject("movie");
                 String imdb = m != null ? Trakt.imdbOf(m) : null;
                 if (imdb != null) watched.add(imdb);
@@ -264,6 +325,7 @@ final class Tracking {
             }
             if (list.size() < 1000) break;
         }
+        shows.addAll(byShow.values());
         return items;
     }
 

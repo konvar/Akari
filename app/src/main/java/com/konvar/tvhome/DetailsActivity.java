@@ -42,7 +42,8 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         if (!(o instanceof Catalog.Item)) return false;
         Catalog.Item it = (Catalog.Item) o;
         if (it.id == null || !it.id.startsWith("tt") || "list".equals(it.type) || "more".equals(it.type)
-                || "season".equals(it.type) || "episode".equals(it.type) || "person".equals(it.type)) return false;
+                || "season".equals(it.type) || "episode".equals(it.type) || "person".equals(it.type)
+                || "guide".equals(it.type) || "comment".equals(it.type)) return false;
         c.startActivity(intent(c, it));
         return true;
     }
@@ -169,9 +170,17 @@ public class DetailsActivity extends Activity implements Rows.Listener {
                     }
                 }
             }
+            // Parental guide (IMDb) and Trakt comments, side by side with the trailer and extras.
+            java.util.concurrent.ExecutorService side = java.util.concurrent.Executors.newFixedThreadPool(2);
+            java.util.concurrent.Future<List<Catalog.Item>> guideF = side.submit(() -> ParentalGuide.load(item.id));
+            java.util.concurrent.Future<List<Catalog.Item>> commentsF =
+                    side.submit(() -> Comments.load(item.id, !"series".equals(item.type)));
+            side.shutdown();
             String trailerKey = Tmdb.trailer(item.id, !"series".equals(item.type));
             Tmdb.Extras extras = Tmdb.extras(item.id, !"series".equals(item.type));
             android.util.Log.i("TvHomeDetails", item.id + " ready in " + (android.os.SystemClock.elapsedRealtime() - started) + " ms");
+            List<Catalog.Item> guide = DetailsPrefetch.await(guideF);
+            List<Catalog.Item> comments = DetailsPrefetch.await(commentsF);
             Trakt.Details result = d;
             Net.MAIN.post(() -> {
                 if (result == null) {
@@ -231,6 +240,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
                     list.add(episodeRow(s));
                     list.get(0).lastFocus = new ArrayList<>(seasons.keySet()).indexOf(s);
                 }
+                if (guide != null && !guide.isEmpty()) list.add(new Rows.Row("Parental guide", guide));
                 if (!result.cast.isEmpty()) list.add(new Rows.Row(getString(R.string.cast), result.cast));
                 // The movie's collection (named after it, in release order), as in Nuvio, before related titles.
                 if (extras.collection.size() > 1) {
@@ -238,6 +248,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
                             extras.collection));
                 }
                 if (!result.related.isEmpty()) list.add(new Rows.Row(getString(R.string.related), result.related));
+                if (comments != null && !comments.isEmpty()) list.add(new Rows.Row("Comments on Trakt", comments));
                 // Network and production companies: logos on white cards that open their titles.
                 if (!extras.networks.isEmpty()) list.add(new Rows.Row(getString(R.string.network), extras.networks));
                 if (!extras.studios.isEmpty()) list.add(new Rows.Row(getString(R.string.production), extras.studios));
@@ -748,7 +759,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         if (row >= 0 && row != alignedRow) {
             // Only when focus changes rows: moving along a row must not move the page.
             alignedRow = row;
-            if ("company".equals(type)) {
+            if ("company".equals(type) || "guide".equals(type)) {
                 // Network and Production are short logo rows: the page only scrolls as far as needed to show
                 // them and fades nothing, so the rows above (and the other logo row) stay on screen.
                 list.post(() -> list.post(() -> showWhole(list, row)));
@@ -759,10 +770,44 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         }
         autoScrollSynopsis();
         String t = o instanceof Catalog.Item ? ((Catalog.Item) o).type : null;
-        if (o instanceof Catalog.Item && !"person".equals(t) && !"company".equals(t) && !"season".equals(t) && !"episode".equals(t)) {
+        if (o instanceof Catalog.Item && !"person".equals(t) && !"company".equals(t) && !"season".equals(t) && !"episode".equals(t)
+                && !"guide".equals(t) && !"comment".equals(t)) {
             ambient.fromCache(((Catalog.Item) o).poster + '@' + Rows.px(this, 100));
         }
 
+    }
+
+    /** A Trakt comment in full (spoilers included, since opening it is asking to read it), scrolled with the D-pad. */
+    private void showComment(Catalog.Item c) {
+        android.app.Dialog d = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        int pad = Rows.px(this, 48);
+        panel.setPadding(pad * 2, pad, pad * 2, pad);
+        panel.setBackgroundColor(0xF0101014);
+        TextView by = new TextView(this);
+        by.setText(c.name);
+        by.setTextColor(0xFFFFFFFF);
+        by.setTextSize(18f);
+        panel.addView(by);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setFocusable(true);
+        TextView body = new TextView(this);
+        body.setText(c.description.replace("[spoiler]", "").replace("[/spoiler]", ""));
+        body.setTextColor(0xDDFFFFFF);
+        body.setTextSize(16f);
+        body.setLineSpacing(0, 1.25f);
+        body.setPadding(0, Rows.px(this, 16), 0, Rows.px(this, 16));
+        scroll.addView(body);
+        panel.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        TextView hint = new TextView(this);
+        hint.setText("Back to close");
+        hint.setTextColor(0x80FFFFFF);
+        hint.setTextSize(12f);
+        panel.addView(hint);
+        d.setContentView(panel);
+        d.show();
+        scroll.requestFocus();
     }
 
     /** The focused episode's line, Trakt rating and synopsis in place of the show's. */
@@ -829,6 +874,11 @@ public class DetailsActivity extends Activity implements Rows.Listener {
             GridActivity.open(this, (Catalog.Item) o);
             return;
         }
+        if ("comment".equals(((Catalog.Item) o).type)) {
+            showComment((Catalog.Item) o);
+            return;
+        }
+        if ("guide".equals(((Catalog.Item) o).type)) return;
         if ("season".equals(((Catalog.Item) o).type) && ((Catalog.Item) o).season == -1) {
             showChart();
             return;

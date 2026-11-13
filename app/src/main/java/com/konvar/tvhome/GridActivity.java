@@ -124,6 +124,7 @@ public class GridActivity extends Activity {
 
     /** Opens a grid for a "Show more" card or a list tile; false for anything else. */
     static boolean open(Context c, Catalog.Item it) {
+        if (Spotlight.open(c, it)) return true;
         Intent i = new Intent(c, GridActivity.class);
         if ("more".equals(it.type) && it.id.startsWith("calendar|")) {
             c.startActivity(new Intent(c, CalendarActivity.class));
@@ -202,7 +203,9 @@ public class GridActivity extends Activity {
         if (loading || done) return;
         loading = true;
         int next = page + 1;
-        Net.API.execute(() -> {
+        // Spotlight pages (Gemini, TMDB) on their own threads, never behind Home's loading on the shared queue.
+        java.util.concurrent.Executor runner = "ask".equals(mode) || "spotlight".equals(mode) ? Spotlight.POOL : Net.API;
+        runner.execute(() -> {
             List<Catalog.Item> got = null;
             try {
                 if ("category".equals(mode)) {
@@ -232,6 +235,25 @@ public class GridActivity extends Activity {
                     List<Catalog.Item> fresh = new ArrayList<>();
                     for (Catalog.Item it : got) if (shown.add(it.id)) fresh.add(it);
                     got = fresh;
+                }
+                else if ("spotlight".equals(mode)) {
+                    got = Spotlight.page(GridActivity.this, source, next);
+                    List<Catalog.Item> fresh = new ArrayList<>();
+                    for (Catalog.Item it : got) if (shown.add(it.id)) fresh.add(it);
+                    // A page whose titles were all shown or watched is not the end (up to page 20).
+                    if (fresh.isEmpty() && !got.isEmpty() && next < 20) {
+                        Net.MAIN.post(() -> {
+                            loading = false;
+                            page = next;
+                            loadMore();
+                        });
+                        return;
+                    }
+                    got = fresh;
+                }
+                else if ("ask".equals(mode)) {
+                    // One answer: Gemini's picks for the question (TMDB search without a key).
+                    got = next != 1 ? new ArrayList<>() : Spotlight.ask(GridActivity.this, source);
                 }
                 else if ("person".equals(mode)) {
                     // Cast found through TMDB (no Trakt app) carries a TMDB person id.

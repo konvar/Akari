@@ -181,6 +181,85 @@ final class Tmdb {
         return withImdb(list, movie);
     }
 
+    // ---- Spotlight ----
+
+    /** One page of /discover with ready-made filters ("&with_genres=…&sort_by=…"), as cards. */
+    static List<Catalog.Item> discoverQuery(boolean movie, String filters, int page) throws Exception {
+        JSONArray r = get("/discover/" + (movie ? "movie" : "tv") + "?include_adult=false" + filters + "&page=" + page)
+                .optJSONArray("results");
+        List<JSONObject> list = new java.util.ArrayList<>();
+        for (int i = 0; r != null && i < r.length(); i++) list.add(r.getJSONObject(i));
+        return withImdb(list, movie);
+    }
+
+    private static final java.util.Set<Integer> MOVIE_GENRES = new java.util.HashSet<>(java.util.Arrays.asList(
+            28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 53, 10752, 37, 10770));
+    private static final java.util.Set<Integer> TV_GENRES = new java.util.HashSet<>(java.util.Arrays.asList(
+            10759, 16, 35, 80, 99, 18, 10751, 10762, 9648, 10763, 10764, 10765, 10766, 10767, 10768, 37));
+
+    /** Whether a genre id exists for movies (or for shows): the two lists differ (Sci-Fi is 878 vs 10765). */
+    static boolean genreFits(int id, boolean movie) {
+        return (movie ? MOVIE_GENRES : TV_GENRES).contains(id);
+    }
+
+    /** A title's TMDB genre ids ("18,80"), movie or show; "" when TMDB does not know it. */
+    static String genreIds(String imdb) {
+        try {
+            JSONObject found = get("/find/" + imdb + "?external_source=imdb_id");
+            for (String k : new String[]{"movie_results", "tv_results"}) {
+                JSONArray a = found.optJSONArray(k);
+                if (a == null || a.length() == 0) continue;
+                JSONArray g = a.getJSONObject(0).optJSONArray("genre_ids");
+                StringBuilder out = new StringBuilder();
+                for (int i = 0; g != null && i < g.length(); i++) {
+                    if (out.length() > 0) out.append(',');
+                    out.append(g.optInt(i));
+                }
+                return out.toString();
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    /** Movies and shows matching words, mixed in TMDB's order. */
+    static List<Catalog.Item> search(String words) throws Exception {
+        JSONArray r = get("/search/multi?include_adult=false&query=" + java.net.URLEncoder.encode(words, "UTF-8"))
+                .optJSONArray("results");
+        List<Catalog.Item> out = new java.util.ArrayList<>();
+        for (int i = 0; r != null && i < r.length(); i++) {
+            JSONObject m = r.getJSONObject(i);
+            String type = m.optString("media_type");
+            if (!"movie".equals(type) && !"tv".equals(type)) continue;
+            List<JSONObject> one = new java.util.ArrayList<>();
+            one.add(m);
+            out.addAll(withImdb(one, "movie".equals(type)));
+        }
+        return out;
+    }
+
+    /** The best TMDB match for a title (and year, when known); null when there is none. */
+    static Catalog.Item findTitle(String title, int year, boolean movie) {
+        if (title == null || title.isEmpty()) return null;
+        try {
+            String q = java.net.URLEncoder.encode(title, "UTF-8");
+            for (int attempt = 0; attempt < 2; attempt++) {
+                String y = attempt == 0 && year > 0 ? (movie ? "&year=" : "&first_air_date_year=") + year : "";
+                JSONArray r = get("/search/" + (movie ? "movie" : "tv") + "?include_adult=false&query=" + q + y)
+                        .optJSONArray("results");
+                if (r != null && r.length() > 0) {
+                    List<JSONObject> one = new java.util.ArrayList<>();
+                    one.add(r.getJSONObject(0));
+                    List<Catalog.Item> got = withImdb(one, movie);
+                    return got.isEmpty() ? null : got.get(0);
+                }
+                if (y.isEmpty()) break;
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
     /** TMDB results as cards; their IMDb ids are looked up in parallel and titles without one are left out. */
     private static List<Catalog.Item> withImdb(List<JSONObject> results, boolean movie) {
         List<java.util.concurrent.Future<Catalog.Item>> jobs = new java.util.ArrayList<>();

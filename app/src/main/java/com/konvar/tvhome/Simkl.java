@@ -128,7 +128,8 @@ final class Simkl {
         return Net.json("POST", API + path + "?" + q(), h, body.toString()).code;
     }
 
-    static List<Catalog.Item> continueWatching(Context c, String pkg, Set<String> watched) throws Exception {
+    static List<Catalog.Item> continueWatching(Context c, String pkg, Set<String> watched, List<Episodes.Show> shows)
+            throws Exception {
         List<Catalog.Item> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         // Paused movies and episodes first.
@@ -154,6 +155,13 @@ final class Simkl {
                 Trakt.episode(it, new JSONObject().put("season", Integer.parseInt(m.group(1)))
                         .put("number", Integer.parseInt(m.group(2))));
                 it.order = Trakt.time(e.optString("last_watched_at"));
+                // Simkl knows the next episode, not every watched one: enough for Upcoming.
+                Episodes.Show sh = new Episodes.Show(it.id);
+                sh.title = it.name;
+                sh.lastWatched = it.order;
+                sh.nextSeason = it.season;
+                sh.nextEpisode = it.episode;
+                shows.add(sh);
                 Tracking.finish(it, pkg);
                 items.add(it);
             }

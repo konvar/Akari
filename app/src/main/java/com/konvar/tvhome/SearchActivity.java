@@ -42,11 +42,19 @@ public class SearchActivity extends Activity implements Rows.Listener {
     private int generation;
     private Ambient ambient;
     private String lastQuery = "";
+    /**
+     * "Ask Spotlight": the same page, but the words go to Spotlight (Gemini, or TMDB without a key) when the
+     * question is finished (search key or voice), not on every letter, and it keeps its own recent questions.
+     */
+    private boolean ask;
 
     private final Runnable runSearch = () -> search(query.getText().toString());
 
     /** The visible search page, if any: Assistant voice input is typed into it instead of being answered. */
     static SearchActivity visible;
+    /** The search page that last went out of sight and when, for voice started from it (InputKeyService). */
+    static SearchActivity lastLeft;
+    static volatile long leftAt;
 
     // Start/stop rather than resume/pause: Assistant's overlay pauses this page while it listens.
     @Override
@@ -58,12 +66,20 @@ public class SearchActivity extends Activity implements Rows.Listener {
     @Override
     protected void onStop() {
         if (visible == this) visible = null;
+        lastLeft = this;
+        leftAt = android.os.SystemClock.elapsedRealtime();
         super.onStop();
     }
 
     /** Spoken text from the remote's mic (via Assistant): a play request starts, anything else is searched. */
+    @Override
+    protected void onDestroy() {
+        if (lastLeft == this) lastLeft = null;
+        super.onDestroy();
+    }
+
     void onSpoken(String text) {
-        if (VoicePlay.handle(this, text)) {
+        if (!ask && VoicePlay.handle(this, text)) {
             finish();
             return;
         }
@@ -88,6 +104,11 @@ public class SearchActivity extends Activity implements Rows.Listener {
         results.setItemAnimator(null);
         adapter = new Rows.RowAdapter(this);
         results.setAdapter(adapter);
+        ask = getIntent().getBooleanExtra("ask", false);
+        if (ask) {
+            query.setHint("Ask Spotlight: \u201ca cozy 90s mystery\u201d, \u201clike Severance\u201d");
+            status.setText("Describe what you feel like watching, then press search. Or hold the remote\u2019s mic button and say it.");
+        }
 
         query.addTextChangedListener(new TextWatcher() {
             @Override
@@ -101,13 +122,15 @@ public class SearchActivity extends Activity implements Rows.Listener {
             @Override
             public void afterTextChanged(Editable s) {
                 query.removeCallbacks(runSearch);
+                // A question is sent once, when it is finished: every letter would be a Gemini request.
+                if (ask) return;
                 query.postDelayed(runSearch, DEBOUNCE_MS);
             }
         });
         query.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
                 query.removeCallbacks(runSearch);
-                if (VoicePlay.handle(this, query.getText().toString())) {
+                if (!ask && VoicePlay.handle(this, query.getText().toString())) {
                     finish();
                     return true;
                 }
@@ -125,7 +148,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
                 Toast.makeText(this, R.string.voice_hold_hint, Toast.LENGTH_LONG).show());
 
         String saved = savedInstanceState != null ? savedInstanceState.getString("query") : null;
-        if (saved != null && !saved.isEmpty()) {
+        if (!ask && saved != null && !saved.isEmpty()) {
             // Back from a title: the same results, with the same card focused, and no keyboard.
             restoreRow = savedInstanceState.getInt("row", -1);
             restoreCard = savedInstanceState.getInt("card", 0);
@@ -135,7 +158,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
             return;
         }
         String initial = getIntent().getStringExtra("query");
-        if (initial != null && VoicePlay.handle(this, initial)) {
+        if (!ask && initial != null && VoicePlay.handle(this, initial)) {
             finish();
             return;
         }
@@ -194,6 +217,10 @@ public class SearchActivity extends Activity implements Rows.Listener {
     }
 
     private void search(String raw) {
+        if (ask) {
+            askSpotlight(raw);
+            return;
+        }
         String q = raw.trim();
         if (q.equals(lastQuery)) return;
         lastQuery = q;
@@ -260,6 +287,28 @@ public class SearchActivity extends Activity implements Rows.Listener {
         status.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * Spotlight's answer opens as a grid, like a list (GridActivity's "ask" mode); Back returns here to ask again,
+     * with the question in the recent ones.
+     */
+    private void askSpotlight(String raw) {
+        String q = raw.trim();
+        if (q.length() < 2) {
+            showHistory();
+            return;
+        }
+        remember(q);
+        showHistory();
+        hideKeyboard();
+        startActivity(new Intent(this, GridActivity.class).putExtra("mode", "ask").putExtra("source", q)
+                .putExtra("title", "\u201c" + q + "\u201d"));
+    }
+
+    /** Recent searches and recent Spotlight questions are kept apart. */
+    private String historyKey() {
+        return ask ? "ask_history" : "history";
+    }
+
     /** The card focused when a title was opened, to focus again when the page comes back. */
     private int focusRow = -1, focusCard;
     private int restoreRow = -1, restoreCard;
@@ -300,7 +349,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
     private static final int HISTORY = 5;
 
     private List<String> history() {
-        String s = getSharedPreferences("search", MODE_PRIVATE).getString("history", "");
+        String s = getSharedPreferences("search", MODE_PRIVATE).getString(historyKey(), "");
         List<String> out = new ArrayList<>();
         for (String q : s.split("\n")) if (!q.trim().isEmpty()) out.add(q);
         return out;
@@ -313,7 +362,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
         for (int i = h.size() - 1; i >= 0; i--) if (h.get(i).equalsIgnoreCase(q)) h.remove(i);
         h.add(0, q);
         while (h.size() > HISTORY) h.remove(h.size() - 1);
-        getSharedPreferences("search", MODE_PRIVATE).edit().putString("history", String.join("\n", h)).apply();
+        getSharedPreferences("search", MODE_PRIVATE).edit().putString(historyKey(), String.join("\n", h)).apply();
     }
 
     private void showHistory() {
@@ -331,7 +380,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
         head.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         TextView clear = button(getString(R.string.clear_history));
         clear.setOnClickListener(v -> {
-            getSharedPreferences("search", MODE_PRIVATE).edit().remove("history").apply();
+            getSharedPreferences("search", MODE_PRIVATE).edit().remove(historyKey()).apply();
             showHistory();
             query.requestFocus();
         });
@@ -368,7 +417,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
             remove.setOnClickListener(v -> {
                 List<String> left = history();
                 left.remove(q);
-                getSharedPreferences("search", MODE_PRIVATE).edit().putString("history", String.join("\n", left)).apply();
+                getSharedPreferences("search", MODE_PRIVATE).edit().putString(historyKey(), String.join("\n", left)).apply();
                 showHistory();
                 View first = box.getChildCount() > 1 ? ((ViewGroup) box.getChildAt(1)).getChildAt(1) : query;
                 first.requestFocus();

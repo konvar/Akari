@@ -38,6 +38,33 @@ final class Prefetch {
         return Rows.px(c, 84);
     }
 
+    /**
+     * A row below the focused one, before Down reaches it (idea from Nuvio's progressive poster warm-up): the card
+     * images of its first visible cards at their drawn size, and the hero art of the card focus will land on.
+     */
+    static void row(Context c, Rows.Row row) {
+        if (row == null || row.items == null || row.items.isEmpty()) return;
+        Context app = c.getApplicationContext();
+        int land = Math.max(0, Math.min(row.lastFocus, row.items.size() - 1));
+        int from = Math.max(0, land - 1), to = Math.min(row.items.size(), land + 7);
+        for (int i = from; i < to; i++) {
+            if (!(row.items.get(i) instanceof Catalog.Item)) continue;
+            Catalog.Item it = (Catalog.Item) row.items.get(i);
+            if ("more".equals(it.type) || "list".equals(it.type) || "person".equals(it.type)
+                    || "company".equals(it.type) || "season".equals(it.type)) continue;
+            if (it.launch != null) {
+                // Wide cards: the episode still or trailer frame, else the backdrop (as Rows binds them).
+                ImageLoader.preload(app, it.thumb != null ? it.thumb : it.background, Rows.px(app, 208), Rows.px(app, 117), false);
+            } else {
+                ImageLoader.preload(app, it.poster, Rows.px(app, 100), Rows.px(app, 150), false);
+            }
+            if (i == land) {
+                ImageLoader.preload(app, it.background, heroW(app), heroH(app), false);
+                ImageLoader.preload(app, it.logo, logoW(app), logoH(app), true);
+            }
+        }
+    }
+
     static void around(Context c, List<?> items, int pos) {
         Context app = c.getApplicationContext();
         for (int d : new int[]{1, 2, -1}) {

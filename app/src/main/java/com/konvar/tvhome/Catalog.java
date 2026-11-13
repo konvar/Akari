@@ -54,6 +54,8 @@ final class Catalog {
         long airs;
         /** Age rating ("PG-13", "TV-MA"); null until known, "" when there is none. */
         String cert;
+        /** Show cards on Continue Watching: aired episodes from this one to the end (0 unknown). */
+        int episodesLeft;
     }
 
     /** One home row from config.xml: "Title|type|Trakt list|Cinemeta catalog" (the Trakt list may be empty). */

@@ -117,7 +117,9 @@ final class ImageLoader {
             }
             return data;
         }
-        try (java.io.InputStream in = c.getContentResolver().openInputStream(android.net.Uri.parse(url))) {
+        // Art shipped with the launcher (Spotlight tiles): "asset://spotlight/gems.webp".
+        try (java.io.InputStream in = url.startsWith("asset://") ? c.getAssets().open(url.substring(8))
+                : c.getContentResolver().openInputStream(android.net.Uri.parse(url))) {
             if (in == null) throw new IOException("no stream for " + url);
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(64 * 1024);
             byte[] buf = new byte[16 * 1024];

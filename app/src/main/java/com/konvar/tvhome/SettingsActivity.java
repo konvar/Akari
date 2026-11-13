@@ -462,6 +462,7 @@ public class SettingsActivity extends Activity {
             Catalog.RowSpec s = Catalog.RowSpec.parse(spec);
             if (s != null) titles.add(s.title);
         }
+        titles.add(Spotlight.ROW);
         titles.add(getString(R.string.for_you));
         titles.add(getString(R.string.watchlist));
         titles.addAll(RowPrefs.knownLists(this));
@@ -472,6 +473,9 @@ public class SettingsActivity extends Activity {
 
     private void buildAccounts() {
         keyCard("OMDb key", Keys.OMDB, getString(R.string.omdb_hint));
+        // Optional: Spotlight's "Ask" tile and AI picks. Spotlight works without it.
+        keyCard("Gemini key (Spotlight)", Keys.GEMINI,
+                "Optional. Scan with your phone and paste a free key from aistudio.google.com/apikey. Adds \"Ask Spotlight\" and AI picks.");
         // Builds without their own Trakt / Simkl app (public releases): use yours, made at trakt.tv/oauth/applications
         // and simkl.com/settings/developer (redirect URI urn:ietf:wg:oauth:2.0:oob).
         if (BuildConfig.TRAKT_CLIENT_ID.isEmpty()) {

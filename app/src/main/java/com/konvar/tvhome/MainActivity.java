@@ -215,6 +215,8 @@ public class MainActivity extends Activity implements Rows.Listener {
     @Override
     protected void onResume() {
         super.onResume();
+        // The remote-button / voice service: back on if an update (or Android) switched it off.
+        A11yGuard.ensure(this);
         if (SystemClock.elapsedRealtime() - contentLoadedAt > REFRESH_MS || rowsChanged()) loadContent();
         loadChannels();
         checkTraktActivity();
@@ -270,6 +272,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     @Override
     protected void onStop() {
         visible = false;
+        leftAt = SystemClock.elapsedRealtime();
         super.onStop();
         heroImage.setImageDrawable(null);
     }
@@ -423,6 +426,8 @@ public class MainActivity extends Activity implements Rows.Listener {
     private TextView weatherButton;
     /** True while the home screen is shown: Assistant voice that is not a play request becomes a search. */
     static volatile boolean visible;
+    /** When Home last went out of sight (elapsedRealtime), for voice started from it (InputKeyService). */
+    static volatile long leftAt;
     private Weather.Report weather;
     private long weatherLoadedAt;
     private boolean channelsLoading;
@@ -533,6 +538,8 @@ public class MainActivity extends Activity implements Rows.Listener {
                         !traktRows ? null : side.submit(() -> TraktActions.myLists(app));
                 side.shutdown();
                 List<Catalog.Item> soon = waitFor(soonF, "upcoming");
+                // Simkl, MDBList and the Nuvio account: Upcoming comes from the watched episodes (Episodes).
+                if (!traktRows && !Tracking.lastUpcoming.isEmpty()) soon = new ArrayList<>(Tracking.lastUpcoming);
                 if (soon != null) rows.add(new Rows.Row(app.getString(R.string.upcoming), soon));
                 if (!trakt.isEmpty()) rows.add(new Rows.Row(app.getString(R.string.continue_watching), trakt));
                 // For you, Watchlist and your own lists: kept for the end of the home screen.
@@ -718,7 +725,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             if (x.size() != y.size()) return false;
             for (int j = 0; j < x.size(); j++) {
                 Catalog.Item p = (Catalog.Item) x.get(j), q = (Catalog.Item) y.get(j);
-                if (!p.name.equals(q.name) || p.progress != q.progress
+                if (!p.name.equals(q.name) || p.progress != q.progress || p.episodesLeft != q.episodesLeft
                         || !String.valueOf(p.subtitle).equals(String.valueOf(q.subtitle))) return false;
             }
         }
@@ -808,6 +815,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         boolean hadFocus = userMoved && focused != null && rowList.findContainingItemView(focused) != null;
         List<Rows.Row> all = new ArrayList<>(channelRows);
         if (!apps.isEmpty()) all.add(new Rows.Row(getString(R.string.your_apps), apps));
+        // Spotlight: tiles that open picks shaped by your taste (works without any account or AI key).
+        all.add(new Rows.Row(Spotlight.ROW, Spotlight.tiles(this)));
         all.addAll(contentRows);
         all.addAll(tailRows);
         // Rows switched off in the launcher's settings.
@@ -1014,14 +1023,26 @@ public class MainActivity extends Activity implements Rows.Listener {
     }
 
     private final Runnable prefetch = () -> {
+        if (FocusPace.quick()) return;
         if (heroItem instanceof Catalog.Item) DetailsPrefetch.get(this, (Catalog.Item) heroItem);
+    };
+
+    /** The row whose neighbours below were last made ready. */
+    private int preparedRow = -1;
+
+    private final Runnable prepareBelow = () -> {
+        int r = preparedRow;
+        if (r < 0 || FocusPace.quick()) return;
+        for (int d = 1; d <= 2 && r + d < adapter.getItemCount(); d++) Prefetch.row(this, adapter.get(r + d));
     };
 
     @Override
     public void onItemFocused(Object item, int row) {
+        // While a key is held, lookups wait until focus settles (FocusPace).
+        long extra = FocusPace.step();
         // A title that stays under focus for a moment gets its details page fetched ahead.
         rowList.removeCallbacks(prefetch);
-        rowList.postDelayed(prefetch, 350);
+        rowList.postDelayed(prefetch, 350 + extra);
         Rows.Row focusedIn = row >= 0 ? adapter.get(row) : null;
         if (userMoved && focusedIn != null && leftRowTitle == null) {
             lastRowTitle = focusedIn.title;
@@ -1029,7 +1050,13 @@ public class MainActivity extends Activity implements Rows.Listener {
         }
         heroItem = item;
         heroImage.removeCallbacks(showHero);
-        heroImage.postDelayed(showHero, 220);
+        heroImage.postDelayed(showHero, 220 + extra);
+        // On a new row, the rows below get their card images and hero art ready before Down reaches them.
+        if (row >= 0 && row != preparedRow) {
+            preparedRow = row;
+            rowList.removeCallbacks(prepareBelow);
+            rowList.postDelayed(prepareBelow, 400 + extra);
+        }
         // Only scroll the page when the row changes; moving along a row must not restart a vertical scroll.
         // The top row is always scrolled fully up, whichever way focus arrived (Up, Down from Search, Back).
         // Before the first key press, focus moves are the launcher's own (start-up), and goToTop places the rows.
@@ -1057,7 +1084,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     private void bindHero() {
         Object item = heroItem;
         if (item instanceof Catalog.Item && ("list".equals(((Catalog.Item) item).type)
-                || "more".equals(((Catalog.Item) item).type))) {
+                || "more".equals(((Catalog.Item) item).type) || "spotlight".equals(((Catalog.Item) item).type))) {
             // Lists and "Show more" have no artwork: just their name and line in the hero.
             heroTrailer.focus(null);
             Catalog.Item it = (Catalog.Item) item;
@@ -1069,6 +1096,22 @@ public class MainActivity extends Activity implements Rows.Listener {
             heroDescription.setText(it.description);
             heroSynopsis.restart();
             heroRatings.setVisibility(View.GONE);
+            if ("spotlight".equals(it.type) && it.thumb != null) {
+                // Spotlight tiles: their picture fills the hero, with the page colour taken from it.
+                if (!sameUrl(it.thumb)) {
+                    heroImage.setAlpha(0f);
+                    ImageLoader.load(heroImage, it.thumb, Prefetch.heroW(this), Prefetch.heroH(this), false, () -> {
+                        if (heroItem != it) return;
+                        android.graphics.drawable.Drawable d = heroImage.getDrawable();
+                        if (d instanceof BitmapDrawable) {
+                            fade(heroImage, 1f, 380);
+                            setAmbient(ImageLoader.ambient(((BitmapDrawable) d).getBitmap(), baseColor));
+                            adaptTopBar(((BitmapDrawable) d).getBitmap());
+                        }
+                    });
+                }
+                return;
+            }
             fade(heroImage, 0f, 320);
             heroImage.setTag(R.id.image_url, null);
             return;

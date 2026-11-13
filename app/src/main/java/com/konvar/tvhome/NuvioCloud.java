@@ -128,7 +128,8 @@ final class NuvioCloud {
         return out;
     }
 
-    static List<Catalog.Item> continueWatching(Context c, String pkg, Set<String> watched) throws Exception {
+    static List<Catalog.Item> continueWatching(Context c, String pkg, Set<String> watched, List<Episodes.Show> shows)
+            throws Exception {
         JSONArray progress = rpc(c, "sync_pull_watch_progress", new JSONObject().put("p_profile_id", 1));
         // The newest entry per title: movies by id, shows by their latest episode.
         Map<String, JSONObject> latest = new HashMap<>();
@@ -177,17 +178,35 @@ final class NuvioCloud {
         }
         for (java.util.concurrent.Future<?> f : jobs) f.get(60, java.util.concurrent.TimeUnit.SECONDS);
         pool.shutdown();
-        // Watched titles: movies, and shows marked watched as a whole (no season).
+        // Watched titles: movies, and shows marked watched as a whole (no season). Watched episodes, per show,
+        // feed Next up and Upcoming (Episodes), so people with only a Nuvio account get both rows too.
+        Map<String, Episodes.Show> byShow = new HashMap<>();
         for (int page = 1; page <= 20; page++) {
             JSONArray w = rpc(c, "sync_pull_watched_items", new JSONObject().put("p_profile_id", 1)
                     .put("p_page", page).put("p_page_size", 500));
             for (int i = 0; i < w.length(); i++) {
                 JSONObject e = w.getJSONObject(i);
                 String id = e.optString("content_id");
-                if (id.startsWith("tt") && (e.isNull("season") || !e.has("season"))) watched.add(id);
+                if (!id.startsWith("tt")) continue;
+                if (e.isNull("season") || !e.has("season")) {
+                    watched.add(id);
+                    continue;
+                }
+                Episodes.Show sh = byShow.get(id);
+                if (sh == null) byShow.put(id, sh = new Episodes.Show(id));
+                if (sh.watched == null) sh.watched = new java.util.HashSet<>();
+                sh.watched.add(e.optInt("season") + ":" + e.optInt("episode"));
+                if (sh.title.isEmpty()) sh.title = e.optString("title", "");
+                sh.lastWatched = Math.max(sh.lastWatched, e.optLong("watched_at"));
             }
             if (w.length() < 500) break;
         }
+        // Recency also counts what was played last, not only what was finished.
+        for (JSONObject e : latest.values()) {
+            Episodes.Show sh = byShow.get(e.optString("content_id"));
+            if (sh != null) sh.lastWatched = Math.max(sh.lastWatched, e.optLong("last_watched"));
+        }
+        shows.addAll(byShow.values());
         return items;
     }
 }

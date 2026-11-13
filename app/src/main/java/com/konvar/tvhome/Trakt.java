@@ -463,8 +463,15 @@ final class Trakt {
                 String cached = cache.getString(key, null);
                 if (cached != null) {
                     JSONObject entry = new JSONObject(cached);
-                    if (lastWatched.equals(entry.optString("last")) && now - entry.optLong("at") < 24 * 3600 * 1000L) {
-                        progress = entry.optJSONObject("progress");
+                    // A caught-up show that is still airing is asked again after 2 hours instead of 24, so a new
+                    // episode brings it back to Continue Watching on its air day (Nuvio's air-day rule).
+                    JSONObject old = entry.optJSONObject("progress");
+                    String status = show.optString("status", "");
+                    boolean airing = !"ended".equals(status) && !"canceled".equals(status);
+                    boolean caughtUp = old != null && old.optJSONObject("next_episode") == null;
+                    long maxAge = caughtUp && airing ? 2 * 3600 * 1000L : 24 * 3600 * 1000L;
+                    if (lastWatched.equals(entry.optString("last")) && now - entry.optLong("at") < maxAge) {
+                        progress = old;
                     }
                 }
                 if (progress == null) {
@@ -475,13 +482,16 @@ final class Trakt {
                             .put("progress", progress).toString()).apply();
                 }
                 int airedCount = progress.optInt("aired"), completed = progress.optInt("completed");
-                if (airedCount > 0 && completed >= airedCount) done.add(imdb);
-                if (hiddenShows.contains(imdb)) return null;
                 JSONObject ep = progress.optJSONObject("next_episode");
+                long airs = ep != null ? time(ep.optString("first_aired", "")) : 0;
+                boolean nextAired = ep != null && airs <= System.currentTimeMillis();
+                // Caught up only while no newer episode is out: an aired next episode clears the checkmark and the
+                // show stays on Continue Watching (the cached counts may be from before it aired).
+                if (airedCount > 0 && completed >= airedCount && !nextAired) done.add(imdb);
+                if (hiddenShows.contains(imdb)) return null;
                 if (ep == null) return null;
                 // Not aired yet: it belongs to Upcoming, and joins Continue Watching once it has aired.
-                long airs = time(ep.optString("first_aired", ""));
-                if (airs > System.currentTimeMillis()) return null;
+                if (!nextAired) return null;
                 Catalog.Item upNext = base(show, imdb, false);
                 upNext.airs = airs;
                 upNext.runtime = ep.optInt("runtime");
@@ -512,6 +522,8 @@ final class Trakt {
         // Your ratings after Continue Watching, so they do not compete with it for the connection.
         POOL.submit(() -> loadMyRatings(c, token));
         fillThumbs(c, items, token);
+        // "N episodes left" on the show cards, from Cinemeta's episode list (as in Nuvio).
+        Episodes.fillLeft(c, items);
         lastContinueWatching = items;
         Log.i(TAG, "continue watching: " + items.size() + " items, " + watchedIds.size() + " watched, "
                 + unfinished.size() + " unfinished shows checked, " + (System.currentTimeMillis() - started) + " ms");
