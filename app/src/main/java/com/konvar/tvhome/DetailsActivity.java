@@ -523,59 +523,12 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         line.setPadding(0, Rows.px(this, 6), 0, Rows.px(this, 14));
         line.setText("Move over an episode to see its name");
         panel.addView(line);
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        int cell = Rows.px(this, 44), gap = Rows.px(this, 4);
-        View first = null;
-        for (java.util.Map.Entry<Integer, java.util.Map<Integer, SeriesGraph.Episode>> s : graph.entrySet()) {
-            LinearLayout row = new LinearLayout(this);
-            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            TextView label = new TextView(this);
-            label.setText("S" + s.getKey());
-            label.setTextColor(0xCCFFFFFF);
-            label.setTextSize(13);
-            label.setTypeface(getResources().getFont(R.font.outfit));
-            Fonts.weight(label, 500);
-            row.addView(label, new LinearLayout.LayoutParams(Rows.px(this, 40), cell));
-            label.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            for (SeriesGraph.Episode e : s.getValue().values()) {
-                TextView c = new TextView(this);
-                c.setGravity(android.view.Gravity.CENTER);
-                c.setText(e.rating > 0 ? String.format(java.util.Locale.US, "%.1f", e.rating) : "–");
-                c.setTextSize(12);
-                c.setTextColor(e.rating >= 7 && e.rating < 8 ? 0xFF111111 : 0xFFFFFFFF);
-                c.setTypeface(getResources().getFont(R.font.outfit));
-                Fonts.weight(c, 600);
-                android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-                android.graphics.drawable.GradientDrawable lit = new android.graphics.drawable.GradientDrawable();
-                lit.setCornerRadius(Rows.px(this, 8));
-                lit.setColor(ratingColor(e.rating));
-                lit.setStroke(Rows.px(this, 3), 0xFFFFFFFF);
-                android.graphics.drawable.GradientDrawable plain = new android.graphics.drawable.GradientDrawable();
-                plain.setCornerRadius(Rows.px(this, 8));
-                plain.setColor(ratingColor(e.rating));
-                bg.addState(new int[]{android.R.attr.state_focused}, lit);
-                bg.addState(new int[]{}, plain);
-                c.setBackground(bg);
-                c.setFocusable(true);
-                String text = "S" + e.season + " E" + e.number + (e.name.isEmpty() ? "" : "  \u00b7  " + e.name)
-                        + (e.rating > 0 ? "  \u00b7  " + String.format(java.util.Locale.US, "%.1f", e.rating) : "")
-                        + (e.votes > 0 ? "  (" + e.votes + " votes)" : "");
-                c.setOnFocusChangeListener((v, has) -> {
-                    if (has) line.setText(text);
-                });
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cell, cell);
-                lp.setMargins(gap, gap, gap, gap);
-                row.addView(c, lp);
-                if (first == null) first = c;
-            }
-            grid.addView(row);
-        }
-        android.widget.HorizontalScrollView h = new android.widget.HorizontalScrollView(this);
-        h.addView(grid);
-        android.widget.ScrollView v = new android.widget.ScrollView(this);
-        v.addView(h);
-        panel.addView(v, new LinearLayout.LayoutParams(-1, Math.min(Rows.px(this, 380), graph.size() * (cell + 2 * gap) + Rows.px(this, 8))));
+        // One view draws the whole grid (only the cells in sight), instead of a view per episode.
+        RatingsChart chart = new RatingsChart(this, graph);
+        chart.setOnSelect(e -> line.setText("S" + e.season + " E" + e.number + (e.name.isEmpty() ? "" : "  ·  " + e.name)
+                + (e.rating > 0 ? "  ·  " + String.format(java.util.Locale.US, "%.1f", e.rating) : "")
+                + (e.votes > 0 ? "  (" + e.votes + " votes)" : "")));
+        panel.addView(chart, new LinearLayout.LayoutParams(-1, -2));
         d.setContentView(panel);
         android.view.Window w = d.getWindow();
         if (w != null) {
@@ -585,18 +538,9 @@ public class DetailsActivity extends Activity implements Rows.Listener {
             w.setDimAmount(0.6f);
         }
         d.show();
-        if (first != null) first.requestFocus();
+        chart.requestFocus();
     }
 
-    /** Red under 6, orange, yellow-green, green, deep green from 9. */
-    private static int ratingColor(double r) {
-        if (r <= 0) return 0xFF3F3F46;
-        if (r >= 9) return 0xFF1B7F3B;
-        if (r >= 8) return 0xFF43A047;
-        if (r >= 7) return 0xFFC0CA33;
-        if (r >= 6) return 0xFFFB8C00;
-        return 0xFFE53935;
-    }
 
     /** This title in Continue Watching with a saved position (paused part-way), from any tracking provider. */
     private Catalog.Item paused() {
