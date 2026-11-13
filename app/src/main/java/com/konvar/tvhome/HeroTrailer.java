@@ -35,6 +35,8 @@ final class HeroTrailer {
     private final Context c;
     private TextureView texture;
     private MediaPlayer player;
+    /** The player's output into the texture; released with the player (it was leaked once per trailer). */
+    private Surface surface;
     private WebView web;
     private Catalog.Item current;
     private int generation;
@@ -138,6 +140,10 @@ final class HeroTrailer {
             }
             player = null;
         }
+        if (surface != null) {
+            surface.release();
+            surface = null;
+        }
         if (web != null) {
             web.setAlpha(0f);
             web.loadUrl("about:blank");
@@ -232,7 +238,9 @@ final class HeroTrailer {
             MediaPlayer mp = new MediaPlayer();
             player = mp;
             try {
-                mp.setSurface(new Surface(texture.getSurfaceTexture()));
+                if (surface != null) surface.release();
+                surface = new Surface(texture.getSurfaceTexture());
+                mp.setSurface(surface);
                 mp.setDataSource(url);
                 // Muted unless sound is switched on; then at a moderate level.
                 float v = sound(c) ? 0.6f : 0f;

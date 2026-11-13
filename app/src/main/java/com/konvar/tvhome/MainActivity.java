@@ -111,9 +111,6 @@ public class MainActivity extends Activity implements Rows.Listener {
         findViewById(R.id.fadeLeft).setBackground(fadeLeft);
         findViewById(R.id.fadeBottom).setBackground(fadeBottom);
         applyAmbient(baseColor);
-        // The root paints the whole screen in the ambient colour, so the window's own background under it is a
-        // wasted full-screen fill on every frame. It stays in the theme for the instant before the first frame.
-        root.post(() -> getWindow().setBackgroundDrawable(null));
         heroImage = findViewById(R.id.heroImage);
         heroTitle = findViewById(R.id.heroTitle);
         heroMeta = findViewById(R.id.heroMeta);

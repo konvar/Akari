@@ -113,7 +113,17 @@ final class Net {
     }
 
     static byte[] get(String url) throws IOException {
+        return get(url, true);
+    }
+
+    /**
+     * {@code cached} false skips the HTTP response cache: for artwork, which ImageLoader already keeps in its own
+     * disk cache. Writing every poster to both caches doubled the disk writes, and an interrupted download left
+     * the HTTP cache's file open (StrictMode: leaked FileOutputStream).
+     */
+    static byte[] get(String url, boolean cached) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setUseCaches(cached);
         c.setConnectTimeout(8000);
         c.setReadTimeout(12000);
         c.setRequestProperty("User-Agent", "tvhome/3");

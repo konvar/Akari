@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A parental guide category on the details page, as one small chip: a three-bar severity meter in the
+     severity's colour, the category, then the severity. Rows tints the chip and fills the meter. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="30dp"
+    android:layout_marginEnd="8dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="10dp"
+    android:paddingEnd="12dp"
+    android:background="@drawable/glass_tile"
+    android:foreground="@drawable/card_focus"
+    android:focusable="true"
+    android:clickable="true">
+
+    <ImageView
+        android:id="@+id/cardImage"
+        android:layout_width="11dp"
+        android:layout_height="11dp"
+        android:importantForAccessibility="no" />
+
+    <TextView
+        android:id="@+id/cardLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="7dp"
+        android:singleLine="true"
+        android:includeFontPadding="false"
+        android:textColor="#FFFFFFFF"
+        android:textSize="11sp"
+        android:fontFamily="@font/outfit"
+        app:weight="500" />
+
+    <TextView
+        android:id="@+id/cardSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:singleLine="true"
+        android:includeFontPadding="false"
+        android:textSize="9sp"
+        android:letterSpacing="0.06"
+        android:textAllCaps="true"
+        android:fontFamily="@font/outfit"
+        app:weight="600" />
+</LinearLayout>

@@ -47,5 +47,12 @@ public final class CardImage extends ImageView {
                 && !((BitmapDrawable) drawable).getBitmap().hasAlpha();
         Drawable want = opaque ? null : cardBackground;
         if (card.getBackground() != want) card.setBackground(want);
+        // A picture with the shade painted in (ImageLoader.loadShaded) needs no shade view over it.
+        View shade = card.findViewById(R.id.cardShade);
+        if (shade != null) {
+            boolean baked = drawable instanceof BitmapDrawable && ImageLoader.shaded(((BitmapDrawable) drawable).getBitmap());
+            int vis = baked ? View.GONE : View.VISIBLE;
+            if (shade.getVisibility() != vis) shade.setVisibility(vis);
+        }
     }
 }

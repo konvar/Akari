@@ -261,6 +261,8 @@ final class Rows {
         static final int COMPANY = 8;
         /** Parental guide and comment cards on the details page (card_note). */
         static final int NOTE = 9;
+        /** Parental guide tiles on the details page (card_guide). */
+        static final int GUIDE = 10;
 
         /** The app tile being moved (hold OK on an app), and whether OK was pressed again since it was picked up. */
         static Object moving;
@@ -386,7 +388,8 @@ final class Rows {
             if ("season".equals(it.type)) return SEASON;
             if ("company".equals(it.type)) return COMPANY;
             if ("spotlight".equals(it.type)) return WIDE;
-            if ("guide".equals(it.type) || "comment".equals(it.type)) return NOTE;
+            if ("guide".equals(it.type)) return GUIDE;
+            if ("comment".equals(it.type)) return NOTE;
             return it.launch != null ? WIDE : POSTER;
         }
 
@@ -398,6 +401,7 @@ final class Rows {
                     : viewType == PERSON ? R.layout.card_person : viewType == SEASON ? R.layout.card_season
                     : viewType == COMPANY ? R.layout.card_company
                     : viewType == NOTE ? R.layout.card_note
+                    : viewType == GUIDE ? R.layout.card_guide
                     : R.layout.card_poster;
             View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
             Look.card(v);
@@ -459,11 +463,20 @@ final class Rows {
                     if (h.countdown != null) h.countdown.setVisibility(View.GONE);
                     h.subtitle.setText(it.subtitle);
                     h.subtitle.setVisibility(View.VISIBLE);
-                    ImageLoader.load(h.image, it.thumb, px(c, 208), px(c, 117));
+                    wide(h, it.thumb, px(c, 208), px(c, 117), null);
                     return;
                 }
-                if ("guide".equals(it.type) || "comment".equals(it.type)) {
-                    boolean guide = "guide".equals(it.type);
+                if ("guide".equals(it.type)) {
+                    // Category, severity in its colour, a three-bar meter, and the tile tinted to match.
+                    h.label.setText(it.name);
+                    h.subtitle.setText(it.subtitle);
+                    h.subtitle.setTextColor(ParentalGuide.color(it.order));
+                    h.image.setImageDrawable(new ParentalGuide.Meter(it.order));
+                    h.itemView.setBackground(ParentalGuide.tile(c, it.order));
+                    return;
+                }
+                if ("comment".equals(it.type)) {
+                    boolean guide = false;
                     ViewGroup.LayoutParams nl = h.itemView.getLayoutParams();
                     nl.width = px(c, guide ? 170 : 340);
                     nl.height = px(c, guide ? 74 : 150);
@@ -515,13 +528,13 @@ final class Rows {
                     int w = px(c, 208), hgt = px(c, 117);
                     if (it.thumb != null) {
                         // Fall back to the backdrop when the still or trailer frame does not exist.
-                        ImageLoader.load(h.image, it.thumb, w, hgt, false, () -> {
+                        wide(h, it.thumb, w, hgt, () -> {
                             if (h.image.getDrawable() == null && it.thumb.equals(h.image.getTag(R.id.image_url))) {
-                                ImageLoader.load(h.image, it.background, w, hgt);
+                                wide(h, it.background, w, hgt, null);
                             }
                         });
                     } else {
-                        ImageLoader.load(h.image, it.background, w, hgt);
+                        wide(h, it.background, w, hgt, null);
                     }
                     bindCountdown(h, it);
                 } else {
@@ -556,6 +569,21 @@ final class Rows {
                 else text = fresh ? "New · " + eps : eps + " left";
             }
             return text;
+        }
+
+        /**
+         * A landscape card's picture. With a shade view on the card, the shade is painted into the picture on the
+         * worker thread (CPU) and the view is hidden, so the GPU does not blend a gradient over it every frame.
+         */
+        private static void wide(Holder h, String url, int w, int hgt, Runnable done) {
+            View shade = h.itemView.findViewById(R.id.cardShade);
+            int cardH = h.itemView.getLayoutParams() != null ? h.itemView.getLayoutParams().height : 0;
+            if (shade == null || cardH <= 0) {
+                ImageLoader.load(h.image, url, w, hgt, false, done);
+                return;
+            }
+            float share = Math.min(1f, shade.getLayoutParams().height / (float) cardH);
+            ImageLoader.loadShaded(h.image, url, w, hgt, share, done);
         }
 
         /** "12 eps" on a show's Continue Watching card; nothing when it is the last one or unknown. */
