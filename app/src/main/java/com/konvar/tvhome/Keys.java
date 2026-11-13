@@ -14,7 +14,7 @@ final class Keys {
     static final String TMDB = "tmdb";
     /** Your own Trakt / Simkl app, for builds without one built in (public releases). */
     static final String TRAKT_ID = "trakt_id";
-    static final String TRAKT_SECRET = "trakt_secret";
+    static final String TRAKT_REDIRECT = "trakt_redirect";
     static final String SIMKL_ID = "simkl_id";
     /** Optional Google Gemini key: Spotlight's "Ask" tile and AI picks. */
     static final String GEMINI = "gemini";
@@ -48,7 +48,8 @@ final class Keys {
 
     /** Cleans a key saved before {@link #set} trimmed extra words. */
     static void tidy() {
-        for (String k : new String[]{MDBLIST, OMDB, TMDB, TRAKT_ID, TRAKT_SECRET, SIMKL_ID, GEMINI}) {
+        if (prefs().contains("trakt_secret")) prefs().edit().remove("trakt_secret").apply();
+        for (String k : new String[]{MDBLIST, OMDB, TMDB, TRAKT_ID, TRAKT_REDIRECT, SIMKL_ID, GEMINI}) {
             String v = get(k);
             if (v.indexOf(' ') > 0) set(k, v);
         }

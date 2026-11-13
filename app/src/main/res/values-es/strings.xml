@@ -20,4 +20,9 @@
     <string name="cant_open">No se puede abrir %1$s</string>
     <string name="date_format">EEEE d \'de\' MMMM</string>
     <string name="dream_name">Reloj</string>
+    <string name="trakt_redirect_hint">Añade la URL de redirección HTTPS registrada para tu aplicación de Trakt.</string>
+    <string name="trakt_pkce_hint">Escanea el código con el móvil en la misma red, autoriza a Akari en Trakt y pega la URL de redirección en el formulario.</string>
+    <string name="trakt_bad_redirect">La URL de redirección no coincide con este inicio de sesión. Comprueba la URL y vuelve a intentarlo.</string>
+    <string name="trakt_sign_in_expired">El inicio de sesión ha caducado. Abre un nuevo código QR.</string>
+    <string name="trakt_exchange_failed">No se pudo completar el inicio de sesión de Trakt. Comprueba los ajustes de la aplicación y vuelve a intentarlo.</string>
 </resources>

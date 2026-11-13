@@ -19,4 +19,9 @@
     <string name="not_available">No disponible en aquest televisor</string>
     <string name="cant_open">No s\'ha pogut obrir %1$s</string>
     <string name="dream_name">Rellotge</string>
+    <string name="trakt_redirect_hint">Afegeix l’URL de redirecció HTTPS registrat per a la teva aplicació de Trakt.</string>
+    <string name="trakt_pkce_hint">Escaneja el codi amb el mòbil a la mateixa xarxa, autoritza Akari a Trakt i enganxa l’URL de redirecció al formulari.</string>
+    <string name="trakt_bad_redirect">L’URL de redirecció no coincideix amb aquest inici de sessió. Comprova l’URL i torna-ho a provar.</string>
+    <string name="trakt_sign_in_expired">L’inici de sessió ha caducat. Obre un codi QR nou.</string>
+    <string name="trakt_exchange_failed">No s’ha pogut completar l’inici de sessió de Trakt. Comprova la configuració de l’aplicació i torna-ho a provar.</string>
 </resources>

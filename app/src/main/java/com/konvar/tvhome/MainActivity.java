@@ -1474,34 +1474,10 @@ public class MainActivity extends Activity implements Rows.Listener {
         panel.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180).start();
     }
 
-    /** Trakt device sign-in: show the code, poll until it is approved, then load Continue Watching from Trakt. */
     private void startTraktLogin() {
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
-                .setTitle(R.string.trakt_connect)
-                .setMessage(R.string.trakt_getting_code)
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-        Context app = getApplicationContext();
-        Net.IO.execute(() -> {
-            try {
-                Trakt.DeviceCode code = Trakt.requestCode();
-                Net.MAIN.post(() -> dialog.setMessage(getString(R.string.trakt_code, code.verificationUrl, code.userCode)));
-                while (dialog.isShowing() && System.currentTimeMillis() < code.expiresAt) {
-                    Thread.sleep(code.interval * 1000L);
-                    if (Trakt.pollToken(app, code)) {
-                        Net.MAIN.post(() -> {
-                            dialog.dismiss();
-                            Toast.makeText(this, R.string.trakt_connected, Toast.LENGTH_SHORT).show();
-                            traktLoadedAt = 0;
-                            loadChannels();
-                        });
-                        return;
-                    }
-                }
-                Net.MAIN.post(dialog::dismiss);
-            } catch (Exception e) {
-                Net.MAIN.post(() -> dialog.setMessage(getString(R.string.trakt_failed)));
-            }
+        TraktSignIn.show(this, () -> {
+            traktLoadedAt = 0;
+            loadChannels();
         });
     }
 

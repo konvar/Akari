@@ -21,4 +21,9 @@
     <string name="date_format">EEEE  d MMMM</string>
     <string name="dream_name">นาฬิกา</string>
 
+    <string name="trakt_redirect_hint">เพิ่ม URL เปลี่ยนเส้นทาง HTTPS ที่ลงทะเบียนไว้สำหรับแอป Trakt ของคุณ</string>
+    <string name="trakt_pkce_hint">สแกนด้วยโทรศัพท์ที่อยู่ในเครือข่ายเดียวกัน อนุญาตให้ Akari เข้าถึง Trakt แล้ววาง URL เปลี่ยนเส้นทางลงในแบบฟอร์ม</string>
+    <string name="trakt_bad_redirect">URL เปลี่ยนเส้นทางไม่ตรงกับการเข้าสู่ระบบครั้งนี้ ตรวจสอบ URL แล้วลองอีกครั้ง</string>
+    <string name="trakt_sign_in_expired">การเข้าสู่ระบบหมดอายุแล้ว เปิดรหัส QR ใหม่</string>
+    <string name="trakt_exchange_failed">เข้าสู่ระบบ Trakt ไม่สำเร็จ ตรวจสอบการตั้งค่าแอปแล้วลองอีกครั้ง</string>
 </resources>

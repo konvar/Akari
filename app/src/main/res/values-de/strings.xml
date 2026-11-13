@@ -21,4 +21,9 @@
     <string name="date_format">EEEE, d. MMMM</string>
     <string name="dream_name">Uhr</string>
     <string name="input_key_service_description">Öffnet die Quellenauswahl, wenn die Input-Taste der Fernbedienung gedrückt wird.</string>
+    <string name="trakt_redirect_hint">Gib die HTTPS-Weiterleitungs-URL ein, die für deine Trakt-App registriert ist.</string>
+    <string name="trakt_pkce_hint">Scanne den QR-Code mit einem Handy im selben Netzwerk. Erlaube Akari den Zugriff auf Trakt und füge dann die Weiterleitungs-URL in das Formular ein.</string>
+    <string name="trakt_bad_redirect">Die Weiterleitungs-URL passt nicht zu dieser Anmeldung. Überprüfe die URL und versuche es erneut.</string>
+    <string name="trakt_sign_in_expired">Die Anmeldung ist abgelaufen. Öffne einen neuen QR-Code.</string>
+    <string name="trakt_exchange_failed">Die Trakt-Anmeldung konnte nicht abgeschlossen werden. Überprüfe die App-Einstellungen und versuche es erneut.</string>
 </resources>

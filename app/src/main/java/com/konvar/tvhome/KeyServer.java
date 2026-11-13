@@ -1,7 +1,7 @@
 package com.konvar.tvhome;
 
 import android.content.Context;
-import android.net.wifi.WifiManager;
+import android.text.TextUtils;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -27,12 +27,18 @@ final class KeyServer {
 
     private final String label;
     private final Listener listener;
+    private final String authorizationUrl;
     private final String secret;
     private ServerSocket socket;
     private volatile boolean running;
 
     KeyServer(String label, Listener listener) {
+        this(label, null, listener);
+    }
+
+    KeyServer(String label, String authorizationUrl, Listener listener) {
         this.label = label;
+        this.authorizationUrl = authorizationUrl;
         this.listener = listener;
         byte[] b = new byte[9];
         new SecureRandom().nextBytes(b);
@@ -75,7 +81,7 @@ final class KeyServer {
                 }
                 String[] parts = request.split(" ");
                 String path = parts.length > 1 ? parts[1] : "";
-                if (!path.startsWith("/" + secret)) {
+                if (!path.equals("/" + secret)) {
                     reply(s, "404 Not Found", "Not found");
                     continue;
                 }
@@ -92,7 +98,8 @@ final class KeyServer {
                     for (String kv : form.split("&")) {
                         if (kv.startsWith("key=")) value = URLDecoder.decode(kv.substring(4), "UTF-8").trim();
                     }
-                    reply(s, "200 OK", page(value.isEmpty() ? "Nothing was entered." : "Saved. You can close this page."));
+                    reply(s, "200 OK", page(value.isEmpty() ? "Nothing was entered." : authorizationUrl == null ? "Saved. You can close this page."
+                            : "Sent to Akari. Check the result on your TV."));
                     String entered = value;
                     if (!entered.isEmpty()) Net.MAIN.post(() -> listener.onKey(entered));
                 } else {
@@ -105,20 +112,24 @@ final class KeyServer {
 
     private String page(String message) {
         String body = message != null ? "<p>" + message + "</p>"
-                : "<form method='post'><input name='key' autofocus placeholder='Paste the key here' "
+                : (authorizationUrl == null ? "" : "<p><a target='_blank' rel='noopener noreferrer' href='"
+                    + TextUtils.htmlEncode(authorizationUrl) + "'>Authorize Akari on Trakt</a></p>"
+                    + "<p>After approving, copy the full address from the browser’s address bar and paste it here.</p>")
+                + "<form method='post'><input name='key' autofocus placeholder='"
+                + (authorizationUrl == null ? "Paste the key here" : "Paste the redirect URL here") + "' "
                 + "autocomplete='off' autocapitalize='off' spellcheck='false'><button>Save on the TV</button></form>";
         return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 + "<title>Akari</title><style>body{font-family:system-ui,sans-serif;background:#0e0f13;color:#fff;"
-                + "margin:0;padding:28px}h1{font-size:22px}input{width:100%;box-sizing:border-box;font-size:18px;"
+                + "margin:0;padding:28px}a{color:#a6d7ff}h1{font-size:22px}input{width:100%;box-sizing:border-box;font-size:18px;"
                 + "padding:14px;border-radius:12px;border:1px solid #555;background:#1c1d22;color:#fff}button{margin-top:14px;"
                 + "width:100%;font-size:18px;padding:14px;border:0;border-radius:12px;background:#fff;color:#111}</style></head>"
-                + "<body><h1>" + label + "</h1>" + body + "</body></html>";
+                + "<body><h1>" + TextUtils.htmlEncode(label) + "</h1>" + body + "</body></html>";
     }
 
     private static void reply(Socket s, String status, String html) throws Exception {
         byte[] b = html.getBytes(StandardCharsets.UTF_8);
         OutputStream out = s.getOutputStream();
-        out.write(("HTTP/1.1 " + status + "\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + b.length
+        out.write(("HTTP/1.1 " + status + "\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: " + b.length
                 + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         out.write(b);
         out.flush();
