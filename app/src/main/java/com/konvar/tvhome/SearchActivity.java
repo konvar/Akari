@@ -175,7 +175,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim();
+        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim(this);
     }
 
     private void showKeyboard() {

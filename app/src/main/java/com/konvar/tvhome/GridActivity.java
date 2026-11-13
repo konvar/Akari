@@ -196,7 +196,7 @@ public class GridActivity extends Activity {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim();
+        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim(this);
     }
 
     private void loadMore() {

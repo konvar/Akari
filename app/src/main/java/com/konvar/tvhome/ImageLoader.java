@@ -135,7 +135,7 @@ final class ImageLoader {
             try {
                 java.io.File tmp = new java.io.File(f.getPath() + ".tmp");
                 java.nio.file.Files.write(tmp.toPath(), data);
-                if (tmp.renameTo(f) && ++writes % 50 == 0) trimDisk(f.getParentFile());
+                if (tmp.renameTo(f)) wrote(f.getParentFile(), data.length);
             } catch (IOException ignored) {
             }
             return data;
@@ -153,7 +153,24 @@ final class ImageLoader {
     }
 
     private static final long DISK_LIMIT = 1024L * 1024 * 1024;
-    private static int writes;
+    /** Bytes in the image folder: measured once, then kept up to date, so it is not listed again and again. */
+    private static long diskBytes = -1;
+
+    /**
+     * Counts a new file; the folder is listed and trimmed only when it really passes the limit (it used to be
+     * listed and sorted, up to 1 GB of files, after every 50 downloads).
+     */
+    private static synchronized void wrote(java.io.File dir, long bytes) {
+        if (diskBytes < 0) {
+            long total = 0;
+            java.io.File[] files = dir.listFiles();
+            if (files != null) for (java.io.File f : files) total += f.length();
+            diskBytes = total;
+        } else {
+            diskBytes += bytes;
+        }
+        if (diskBytes > DISK_LIMIT) diskBytes = trimDisk(dir);
+    }
 
     private static final char[] HEX = "0123456789abcdef".toCharArray();
     private static volatile java.io.File imageDir;
@@ -182,20 +199,22 @@ final class ImageLoader {
         return new java.io.File(dir, name);
     }
 
-    /** Keeps the image folder under 1 GB by removing the least recently used files. */
-    private static void trimDisk(java.io.File dir) {
+    /** Keeps the image folder under 1 GB by removing the least recently used files; returns the size left. */
+    private static long trimDisk(java.io.File dir) {
         java.io.File[] files = dir.listFiles();
-        if (files == null) return;
+        if (files == null) return 0;
         long total = 0;
         for (java.io.File f : files) total += f.length();
-        if (total <= DISK_LIMIT) return;
+        if (total <= DISK_LIMIT) return total;
         java.util.Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
         for (java.io.File f : files) {
             if (total <= DISK_LIMIT * 9 / 10) break;
-            total -= f.length();
-            f.delete();
+            long len = f.length();
+            if (f.delete()) total -= len;
         }
+        return total;
     }
+
 
     static Bitmap decode(byte[] data, int width, int height, boolean alpha) {
         BitmapFactory.Options o = new BitmapFactory.Options();
@@ -281,7 +300,19 @@ final class ImageLoader {
         CACHE.put(key, bitmap);
     }
 
-    static void trim() {
-        CACHE.evictAll();
+    /**
+     * A screen went to the background: keep a third of the decoded pictures (the ones used last, which are the
+     * rows on screen) so coming back to Home shows them at once; the rest are read again from disk when needed.
+     * On a low-RAM TV everything goes, as before.
+     */
+    static void trim(android.content.Context c) {
+        android.app.ActivityManager am = (android.app.ActivityManager) c.getSystemService(android.content.Context.ACTIVITY_SERVICE);
+        if (am != null && am.isLowRamDevice()) CACHE.evictAll();
+        else CACHE.trimToSize(CACHE.maxSize() / 3);
+    }
+
+    /** Grows each time pictures leave the memory cache: a screen redraws its cards only when this moved. */
+    static int evictions() {
+        return CACHE.evictionCount();
     }
 }

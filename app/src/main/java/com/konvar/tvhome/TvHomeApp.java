@@ -54,7 +54,8 @@ public class TvHomeApp extends Application {
         });
         Keys.app = this;
         Keys.tidy();
-        Trakt.watchedIds = RowCache.loadIds(this, "watched");
+        // Home's saved rows and the watched list are read off the main thread while Home is being created.
+        Startup.begin(this);
         Trakt.loadSavedRatings(this);
     }
 }

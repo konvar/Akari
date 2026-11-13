@@ -24,9 +24,19 @@ final class DetailsPrefetch {
         /** Cinemeta's meta for a show (its episodes), as raw JSON; null for movies. */
         Future<String> meta;
         Future<Trakt.ShowProgress> progress;
+        /** The rest of the page, fetched with the above while the title has focus (they used to start only
+         *  once the page was open, after the parts above had arrived: two network rounds in a row). */
+        Future<List<Catalog.Item>> guide;
+        Future<List<Catalog.Item>> comments;
+        Future<String> trailer;
+        Future<Tmdb.Extras> extras;
+        /** A show's episode stills and synopses (SeriesGraph); needs the TMDB id from the details. */
+        Future<Map<Integer, Map<Integer, SeriesGraph.Episode>>> graph;
     }
 
-    private static final ExecutorService POOL = Executors.newFixedThreadPool(6);
+    private static final ExecutorService POOL = Executors.newFixedThreadPool(8);
+    /** Parts that wait on another part (the episode graph waits for the details), apart from POOL. */
+    private static final ExecutorService CHAINED = Executors.newFixedThreadPool(2);
     private static final long FRESH_MS = 5 * 60 * 1000L;
     private static final Map<String, Bundle> CACHE = new LinkedHashMap<String, Bundle>(32, 0.75f, true) {
         @Override
@@ -53,6 +63,17 @@ final class DetailsPrefetch {
             String url = app.getString(R.string.addon_url) + "/meta/series/" + it.id + ".json";
             n.meta = POOL.submit(() -> new String(Net.get(url), java.nio.charset.StandardCharsets.UTF_8));
             n.progress = POOL.submit(() -> Tracking.showProgress(app, it.id));
+        }
+        n.guide = POOL.submit(() -> ParentalGuide.load(it.id));
+        n.comments = POOL.submit(() -> Comments.load(it.id, !series));
+        n.trailer = POOL.submit(() -> Tmdb.trailer(it.id, !series));
+        n.extras = POOL.submit(() -> Tmdb.extras(it.id, !series));
+        if (series) {
+            Future<Trakt.Details> details = n.details;
+            n.graph = CHAINED.submit(() -> {
+                Trakt.Details d = await(details);
+                return SeriesGraph.show(d != null ? d.tmdb : 0);
+            });
         }
         CACHE.put(key, n);
         return n;

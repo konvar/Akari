@@ -44,7 +44,7 @@ public class CalendarActivity extends Activity implements Rows.Listener {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim();
+        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim(this);
     }
 
     /** True once a calendar (saved or fresh) is on screen. */

@@ -144,7 +144,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim();
+        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim(this);
     }
 
     private void load() {
@@ -157,7 +157,8 @@ public class DetailsActivity extends Activity implements Rows.Listener {
             int[] start = {-1};
             if ("series".equals(item.type) && entry != null) {
                 start[0] = loadEpisodes(DetailsPrefetch.await(entry.progress), DetailsPrefetch.await(entry.meta));
-                graph = SeriesGraph.show(d != null ? d.tmdb : 0);
+                java.util.Map<Integer, java.util.Map<Integer, SeriesGraph.Episode>> g0 = DetailsPrefetch.await(entry.graph);
+                graph = g0 != null ? g0 : SeriesGraph.show(d != null ? d.tmdb : 0);
                 // Stills and synopses Cinemeta lacks come from SeriesGraph (TMDB data).
                 for (java.util.Map.Entry<Integer, List<Catalog.Item>> se : seasons.entrySet()) {
                     java.util.Map<Integer, SeriesGraph.Episode> g = graph.get(se.getKey());
@@ -170,17 +171,13 @@ public class DetailsActivity extends Activity implements Rows.Listener {
                     }
                 }
             }
-            // Parental guide (IMDb) and Trakt comments, side by side with the trailer and extras.
-            java.util.concurrent.ExecutorService side = java.util.concurrent.Executors.newFixedThreadPool(2);
-            java.util.concurrent.Future<List<Catalog.Item>> guideF = side.submit(() -> ParentalGuide.load(item.id));
-            java.util.concurrent.Future<List<Catalog.Item>> commentsF =
-                    side.submit(() -> Comments.load(item.id, !"series".equals(item.type)));
-            side.shutdown();
-            String trailerKey = Tmdb.trailer(item.id, !"series".equals(item.type));
-            Tmdb.Extras extras = Tmdb.extras(item.id, !"series".equals(item.type));
+            // Parental guide, comments, trailer and extras: started with the rest while the title had focus.
+            boolean movie = !"series".equals(item.type);
+            String trailerKey = entry != null ? DetailsPrefetch.await(entry.trailer) : Tmdb.trailer(item.id, movie);
+            Tmdb.Extras extras = entry != null ? DetailsPrefetch.await(entry.extras) : Tmdb.extras(item.id, movie);
+            List<Catalog.Item> guide = entry != null ? DetailsPrefetch.await(entry.guide) : ParentalGuide.load(item.id);
+            List<Catalog.Item> comments = entry != null ? DetailsPrefetch.await(entry.comments) : Comments.load(item.id, movie);
             android.util.Log.i("TvHomeDetails", item.id + " ready in " + (android.os.SystemClock.elapsedRealtime() - started) + " ms");
-            List<Catalog.Item> guide = DetailsPrefetch.await(guideF);
-            List<Catalog.Item> comments = DetailsPrefetch.await(commentsF);
             Trakt.Details result = d;
             Net.MAIN.post(() -> {
                 if (result == null) {

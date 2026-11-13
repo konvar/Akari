@@ -167,7 +167,9 @@ public class MainActivity extends Activity implements Rows.Listener {
         }
 
         // Last session's rows and checkmarks first, so Home is complete at once; fresh data follows.
-        channelRows = RowCache.load(this, "continue");
+        Startup.Saved saved = Startup.take(this);
+        Trakt.watchedIds = saved.watched;
+        channelRows = saved.continueRows;
         // Paused titles known at once (details pages show Resume) until the provider has answered again.
         for (Rows.Row r : channelRows) {
             if (!r.title.equals(getString(R.string.continue_watching)) || !Trakt.lastContinueWatching.isEmpty()) continue;
@@ -175,8 +177,8 @@ public class MainActivity extends Activity implements Rows.Listener {
             for (Object o : r.items) if (o instanceof Catalog.Item) cached.add((Catalog.Item) o);
             Trakt.lastContinueWatching = cached;
         }
-        contentRows.addAll(RowCache.load(this, "content"));
-        tailRows = RowCache.load(this, "tail");
+        contentRows.addAll(saved.contentRows);
+        tailRows = saved.tailRows;
         // With "Don't keep activities" on (or after a low-memory kill), Home is rebuilt when a page it opened closes:
         // take back the card that was entered, saved when Home was left, unless that was long ago or before a reboot.
         SharedPreferences left = getSharedPreferences("home_focus", MODE_PRIVATE);
@@ -187,7 +189,6 @@ public class MainActivity extends Activity implements Rows.Listener {
             leftItemKey = left.getString("item", null);
         }
         left.edit().clear().apply();
-        Trakt.watchedIds = RowCache.loadIds(this, "watched");
         for (Rows.Row r : channelRows) {
             if (!r.title.equals(getString(R.string.continue_watching))) continue;
             List<Catalog.Item> cw = new ArrayList<>();
@@ -229,8 +230,9 @@ public class MainActivity extends Activity implements Rows.Listener {
         // Also retry when the first try failed, e.g. at boot before Wi-Fi was up.
         applyTopBar();
         if (weather == null || SystemClock.elapsedRealtime() - weatherLoadedAt > 30 * 60 * 1000L) loadWeather();
-        // The memory cache was dropped while Home was hidden; redraw what is on screen from the disk cache.
-        adapter.notifyDataSetChanged();
+        // Pictures may have left the memory cache while Home was hidden: then redraw the cards (from the disk
+        // cache). When nothing left, the rows are already right and coming back costs no rebind at all.
+        if (ImageLoader.evictions() != evictionsAtStop) adapter.notifyDataSetChanged();
         if (heroItem != null) bindHero();
         // Coming back from a details page or an app: the entered card keeps focus, not Continue Watching.
         // Redrawing the rows drops focus and Android hands it to the first card it finds, so the card saved
@@ -269,10 +271,14 @@ public class MainActivity extends Activity implements Rows.Listener {
         Net.MAIN.removeCallbacks(activityCheck);
     }
 
+    /** ImageLoader.evictions() when Home was left (onResume redraws the cards only if pictures were dropped). */
+    private int evictionsAtStop = -1;
+
     @Override
     protected void onStop() {
         visible = false;
         leftAt = SystemClock.elapsedRealtime();
+        evictionsAtStop = ImageLoader.evictions();
         super.onStop();
         heroImage.setImageDrawable(null);
     }
@@ -280,7 +286,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim();
+        if (level >= TRIM_MEMORY_UI_HIDDEN) ImageLoader.trim(this);
     }
 
     private StorageNotice storageNotice;
