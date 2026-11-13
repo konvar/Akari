@@ -148,5 +148,6 @@
     <string name="trakt_bad_redirect">The redirect URL did not match this sign-in. Check the URL and try again.</string>
     <string name="trakt_sign_in_expired">Sign-in expired. Open a new QR code.</string>
     <string name="trakt_exchange_failed">Couldn’t complete Trakt sign-in. Check the app settings and try again.</string>
+    <string name="imdb_badge_description" translatable="false">IMDb %1$s</string>
     <string name="trakt_connected">Trakt connected</string>
 </resources>

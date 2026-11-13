@@ -286,6 +286,7 @@ public class SettingsActivity extends Activity {
         addCountdownCard();
         addTrailerCard();
         addLookCards();
+        addImdbBadgesCard();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
     }
 
@@ -330,6 +331,17 @@ public class SettingsActivity extends Activity {
                     Look.setSpacing(this, java.util.Arrays.asList(Look.SPACINGS).indexOf(c.iterator().next()));
                     showSection(0);
                 }));
+    }
+
+    private void addImdbBadgesCard() {
+        card("IMDb ratings on posters", null, toggle(Look.showImdbBadges(this)), v -> {
+            boolean show = !Look.showImdbBadges(this);
+            Look.setShowImdbBadges(this, show);
+            LinearLayout row = (LinearLayout) v;
+            int switchIndex = row.getChildCount() - 1;
+            row.removeViewAt(switchIndex);
+            row.addView(toggle(show));
+        });
     }
 
     private String startTitle() {
@@ -446,9 +458,10 @@ public class SettingsActivity extends Activity {
         addCountdownCard();
         addTrailerCard();
         addLookCards();
+        addImdbBadgesCard();
+        int firstRow = content.getChildCount();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
-        // Children 0-4 are the start-row, countdown, trailer, card-size and spacing cards; row cards follow them.
-        View v = content.getChildAt(Math.max(0, Math.min(focus + 5, content.getChildCount() - 1)));
+        View v = content.getChildAt(Math.max(0, Math.min(focus + firstRow, content.getChildCount() - 1)));
         if (v != null) v.requestFocus();
     }
 

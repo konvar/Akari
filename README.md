@@ -33,6 +33,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 **Home**
 - A hero for the focused title: clear logo, year, genres, age rating, ratings from IMDb, Trakt, TMDB, Rotten Tomatoes
   and more, and the full synopsis, which scrolls slowly when it is long.
+- Movie and series posters show available IMDb scores. Turn them off under Settings → Home rows → IMDb ratings on posters.
 - Continue Watching with time left (`23m left`), `New episode` and `Up next` badges.
 - Upcoming episodes of the shows you follow, with a live countdown before they air (style and timing configurable).
 - Content rows: trending, popular, box office, most watched, most anticipated, popular lists, and Airing tonight.

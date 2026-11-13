@@ -36,6 +36,14 @@ final class Look {
         prefs(c).edit().putInt("spacing", Math.max(0, Math.min(2, i))).apply();
     }
 
+    static boolean showImdbBadges(Context c) {
+        return prefs(c).getBoolean("imdb_badges", true);
+    }
+
+    static void setShowImdbBadges(Context c, boolean show) {
+        prefs(c).edit().putBoolean("imdb_badges", show).apply();
+    }
+
     /** A card: its fixed width and height scaled, the gap after it scaled with the spacing. */
     static void card(View v) {
         float s = SCALE[size(v.getContext())], g = GAP[spacing(v.getContext())];

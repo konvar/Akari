@@ -427,9 +427,11 @@ final class Rows {
                 int mine = Trakt.myRating(it);
                 CornerRating corner = CornerRating.on(h.itemView);
                 if (corner != null) corner.set(mine);
+                if (h.imdbBadge != null) h.imdbBadge.bind(it, mine > 0);
                 if (h.check != null) {
                     android.widget.FrameLayout.LayoutParams clp = (android.widget.FrameLayout.LayoutParams) h.check.getLayoutParams();
-                    int g = android.view.Gravity.TOP | (mine > 0 ? android.view.Gravity.START : android.view.Gravity.END);
+                    boolean showBadge = h.imdbBadge != null && Look.showImdbBadges(c);
+                    int g = android.view.Gravity.TOP | (mine > 0 || showBadge ? android.view.Gravity.START : android.view.Gravity.END);
                     if (clp.gravity != g) {
                         clp.gravity = g;
                         h.check.setLayoutParams(clp);
@@ -678,6 +680,7 @@ final class Rows {
                 h.countdown.removeCallbacks((Runnable) h.countdown.getTag());
                 h.countdown.setTag(null);
             }
+            if (h.imdbBadge != null) h.imdbBadge.clear();
             h.image.setTag(R.id.image_url, null);
             h.image.setImageDrawable(null);
         }
@@ -698,6 +701,7 @@ final class Rows {
             final android.widget.ProgressBar progress;
             final ImageView check;
             final TextView countdown;
+            final ImdbBadge imdbBadge;
 
             Holder(View v) {
                 super(v);
@@ -707,6 +711,7 @@ final class Rows {
                 progress = v.findViewById(R.id.cardProgress);
                 check = v.findViewById(R.id.cardCheck);
                 countdown = v.findViewById(R.id.cardCountdown);
+                imdbBadge = v.findViewById(R.id.cardImdbBadge);
                 Look.clipRound(image);
                 v.setOnClickListener(x -> {
                     CardAdapter a = (CardAdapter) getBindingAdapter();

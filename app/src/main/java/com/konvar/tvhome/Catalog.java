@@ -30,6 +30,7 @@ final class Catalog {
         String logo;
         String year;
         String rating;
+        String imdbRating;
         String genres;
         String description;
         /** Set for Continue Watching items: the content app's own resume intent, episode line and progress. */
@@ -105,7 +106,8 @@ final class Catalog {
                 it.logo = "https://images.metahub.space/logo/medium/" + it.id + "/img";
             }
             it.year = m.optString("releaseInfo", m.optString("year", ""));
-            it.rating = m.optString("imdbRating", "");
+            it.imdbRating = m.optString("imdbRating", "");
+            it.rating = it.imdbRating;
             it.description = m.optString("description", "");
             JSONArray g = m.optJSONArray("genres");
             if (g == null) g = m.optJSONArray("genre");
@@ -128,7 +130,8 @@ final class Catalog {
         JSONObject m = new JSONObject(new String(Net.get(url), StandardCharsets.UTF_8)).optJSONObject("meta");
         if (m == null) return;
         it.year = m.optString("releaseInfo", m.optString("year", ""));
-        it.rating = m.optString("imdbRating", "");
+        it.imdbRating = m.optString("imdbRating", "");
+        it.rating = it.imdbRating;
         JSONArray g = m.optJSONArray("genres");
         if (g == null) g = m.optJSONArray("genre");
         if (g != null) {
