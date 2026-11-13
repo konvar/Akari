@@ -18,7 +18,7 @@ android {
         versionCode = 42
         versionName = '0.9.2'
         buildConfigField 'String', 'TRAKT_CLIENT_ID', "\"${localProps.getProperty('TRAKT_CLIENT_ID', '')}\""
-        buildConfigField 'String', 'TRAKT_CLIENT_SECRET', "\"${localProps.getProperty('TRAKT_CLIENT_SECRET', '')}\""
+        buildConfigField 'String', 'TRAKT_REDIRECT_URI', "\"${localProps.getProperty('TRAKT_REDIRECT_URI', '')}\""
         // Other tracking services, from the same file: Simkl (PIN sign-in) and the Nuvio account (Supabase).
         buildConfigField 'String', 'SIMKL_CLIENT_ID', "\"${localProps.getProperty('SIMKL_CLIENT_ID', '')}\""
         buildConfigField 'String', 'SUPABASE_URL', "\"${System.getenv('NUVIO_SUPABASE_URL') ?: localProps.getProperty('NUVIO_SUPABASE_URL', '')}\""

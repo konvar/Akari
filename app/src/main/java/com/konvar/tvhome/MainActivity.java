@@ -43,6 +43,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     private static final long REFRESH_MS = 60 * 60 * 1000L;
 
     private RecyclerView rowList;
+    private boolean showImdbBadges;
     private Rows.RowAdapter adapter;
     private View root;
     private View heroInfo;
@@ -98,6 +99,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         // 16-bit window buffers: half the graphics memory of the default 32-bit format, same look on a TV.
         getWindow().setFormat(PixelFormat.RGB_565);
         setContentView(R.layout.activity_home);
+        showImdbBadges = Look.showImdbBadges(this);
         installHttpCache();
 
         root = findViewById(R.id.root);
@@ -230,9 +232,12 @@ public class MainActivity extends Activity implements Rows.Listener {
         // Also retry when the first try failed, e.g. at boot before Wi-Fi was up.
         applyTopBar();
         if (weather == null || SystemClock.elapsedRealtime() - weatherLoadedAt > 30 * 60 * 1000L) loadWeather();
-        // Pictures may have left the memory cache while Home was hidden: then redraw the cards (from the disk
-        // cache). When nothing left, the rows are already right and coming back costs no rebind at all.
-        if (ImageLoader.evictions() != evictionsAtStop) adapter.notifyDataSetChanged();
+        // Rebind when the user changes poster labels or pictures leave the memory cache.
+        boolean showBadges = Look.showImdbBadges(this);
+        if (ImageLoader.evictions() != evictionsAtStop || showBadges != showImdbBadges) {
+            showImdbBadges = showBadges;
+            adapter.notifyDataSetChanged();
+        }
         if (heroItem != null) bindHero();
         // Coming back from a details page or an app: the entered card keeps focus, not Continue Watching.
         // Redrawing the rows drops focus and Android hands it to the first card it finds, so the card saved
@@ -1474,34 +1479,10 @@ public class MainActivity extends Activity implements Rows.Listener {
         panel.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180).start();
     }
 
-    /** Trakt device sign-in: show the code, poll until it is approved, then load Continue Watching from Trakt. */
     private void startTraktLogin() {
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
-                .setTitle(R.string.trakt_connect)
-                .setMessage(R.string.trakt_getting_code)
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-        Context app = getApplicationContext();
-        Net.IO.execute(() -> {
-            try {
-                Trakt.DeviceCode code = Trakt.requestCode();
-                Net.MAIN.post(() -> dialog.setMessage(getString(R.string.trakt_code, code.verificationUrl, code.userCode)));
-                while (dialog.isShowing() && System.currentTimeMillis() < code.expiresAt) {
-                    Thread.sleep(code.interval * 1000L);
-                    if (Trakt.pollToken(app, code)) {
-                        Net.MAIN.post(() -> {
-                            dialog.dismiss();
-                            Toast.makeText(this, R.string.trakt_connected, Toast.LENGTH_SHORT).show();
-                            traktLoadedAt = 0;
-                            loadChannels();
-                        });
-                        return;
-                    }
-                }
-                Net.MAIN.post(dialog::dismiss);
-            } catch (Exception e) {
-                Net.MAIN.post(() -> dialog.setMessage(getString(R.string.trakt_failed)));
-            }
+        TraktSignIn.show(this, () -> {
+            traktLoadedAt = 0;
+            loadChannels();
         });
     }
 

@@ -286,6 +286,7 @@ public class SettingsActivity extends Activity {
         addCountdownCard();
         addTrailerCard();
         addLookCards();
+        addImdbBadgesCard();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
     }
 
@@ -330,6 +331,17 @@ public class SettingsActivity extends Activity {
                     Look.setSpacing(this, java.util.Arrays.asList(Look.SPACINGS).indexOf(c.iterator().next()));
                     showSection(0);
                 }));
+    }
+
+    private void addImdbBadgesCard() {
+        card("IMDb ratings on posters", null, toggle(Look.showImdbBadges(this)), v -> {
+            boolean show = !Look.showImdbBadges(this);
+            Look.setShowImdbBadges(this, show);
+            LinearLayout row = (LinearLayout) v;
+            int switchIndex = row.getChildCount() - 1;
+            row.removeViewAt(switchIndex);
+            row.addView(toggle(show));
+        });
     }
 
     private String startTitle() {
@@ -446,9 +458,10 @@ public class SettingsActivity extends Activity {
         addCountdownCard();
         addTrailerCard();
         addLookCards();
+        addImdbBadgesCard();
+        int firstRow = content.getChildCount();
         for (int i = 0; i < order.size(); i++) addRowCard(i);
-        // Children 0-4 are the start-row, countdown, trailer, card-size and spacing cards; row cards follow them.
-        View v = content.getChildAt(Math.max(0, Math.min(focus + 5, content.getChildCount() - 1)));
+        View v = content.getChildAt(Math.max(0, Math.min(focus + firstRow, content.getChildCount() - 1)));
         if (v != null) v.requestFocus();
     }
 
@@ -476,11 +489,11 @@ public class SettingsActivity extends Activity {
         // Optional: Spotlight's "Ask" tile and AI picks. Spotlight works without it.
         keyCard("Gemini key (Spotlight)", Keys.GEMINI,
                 "Optional. Scan with your phone and paste a free key from aistudio.google.com/apikey. Adds \"Ask Spotlight\" and AI picks.");
-        // Builds without their own Trakt / Simkl app (public releases): use yours, made at trakt.tv/oauth/applications
-        // and simkl.com/settings/developer (redirect URI urn:ietf:wg:oauth:2.0:oob).
         if (BuildConfig.TRAKT_CLIENT_ID.isEmpty()) {
-            keyCard("Trakt app Client ID", Keys.TRAKT_ID, "From trakt.tv/oauth/applications (your own app)");
-            keyCard("Trakt app Client Secret", Keys.TRAKT_SECRET, "From the same Trakt app");
+            keyCard("Trakt app Client ID", Keys.TRAKT_ID, "From app.trakt.tv/settings/apps/api (your own app)");
+        }
+        if (BuildConfig.TRAKT_REDIRECT_URI.isEmpty()) {
+            keyCard("Trakt redirect URL", Keys.TRAKT_REDIRECT, getString(R.string.trakt_redirect_hint));
         }
         if (BuildConfig.SIMKL_CLIENT_ID.isEmpty()) {
             keyCard("Simkl app Client ID", Keys.SIMKL_ID, "From simkl.com/settings/developer (your own app)");
@@ -592,7 +605,7 @@ public class SettingsActivity extends Activity {
             String sub;
             switch (p) {
                 case Tracking.TRAKT:
-                    sub = !Trakt.configured() ? "Add your Trakt app ID and secret in API keys first."
+                    sub = !Trakt.configured() ? "Add your Trakt app ID in API keys first."
                             : connected ? "Connected. Continue Watching, Upcoming, lists and checkmarks. Press again to sign out."
                             : "Press to connect with a QR code.";
                     break;
@@ -666,8 +679,15 @@ public class SettingsActivity extends Activity {
             return;
         }
         if (Tracking.TRAKT.equals(p)) {
-            connectTrakt();
-            Tracking.choose(this, p);
+            if (!TraktSignIn.isRedirectUri(Trakt.redirectUri())) {
+                showSection(1);
+                Toast.makeText(this, R.string.trakt_redirect_hint, Toast.LENGTH_LONG).show();
+                return;
+            }
+            TraktSignIn.show(this, () -> {
+                Tracking.choose(this, p);
+                showSection(3);
+            });
             return;
         }
         if (Tracking.MDBLIST.equals(p)) {
@@ -985,39 +1005,6 @@ public class SettingsActivity extends Activity {
     }
 
     // ---- sign-in flows ----
-
-    /** Trakt sign-in: a QR code that opens trakt.tv/activate with the code filled in. */
-    private void connectTrakt() {
-        Net.API.execute(() -> {
-            try {
-                Trakt.DeviceCode code = Trakt.requestCode();
-                Net.MAIN.post(() -> {
-                    QrDialog d = new QrDialog(this, "Connect Trakt", getString(R.string.trakt_qr_hint, code.verificationUrl),
-                            code.verificationUrl + "/" + code.userCode);
-                    d.status(code.userCode);
-                    d.show();
-                    Net.API.execute(() -> {
-                        try {
-                            while (d.dialog.isShowing() && System.currentTimeMillis() < code.expiresAt) {
-                                Thread.sleep(code.interval * 1000L);
-                                if (Trakt.pollToken(getApplicationContext(), code)) {
-                                    Net.MAIN.post(() -> {
-                                        d.dialog.dismiss();
-                                        Toast.makeText(this, R.string.trakt_connected, Toast.LENGTH_SHORT).show();
-                                        showSection(3);
-                                    });
-                                    return;
-                                }
-                            }
-                        } catch (Exception ignored) {
-                        }
-                    });
-                });
-            } catch (Exception e) {
-                Net.MAIN.post(() -> Toast.makeText(this, R.string.trakt_failed, Toast.LENGTH_SHORT).show());
-            }
-        });
-    }
 
     /** API keys are typed on the phone: the QR code opens a one-page form served by the TV itself. */
     private void enterKey(String service, String key, String hint) {

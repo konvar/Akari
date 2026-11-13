@@ -81,7 +81,7 @@ final class RowCache {
         JSONObject j = new JSONObject();
         j.put("id", it.id).put("type", it.type).put("name", it.name).put("poster", it.poster)
                 .put("background", it.background).put("logo", it.logo).put("year", it.year)
-                .put("rating", it.rating).put("genres", it.genres).put("description", it.description)
+                .put("rating", it.rating).put("imdbRating", it.imdbRating).put("genres", it.genres).put("description", it.description)
                 .put("subtitle", it.subtitle).put("progress", it.progress).put("left", it.episodesLeft).put("order", it.order)
                 .put("season", it.season).put("episode", it.episode).put("episodeTitle", it.episodeTitle)
                 .put("thumb", it.thumb).put("kind", it.kind).put("playbackId", it.playbackId)
@@ -100,6 +100,7 @@ final class RowCache {
         it.logo = opt(j, "logo");
         it.year = opt(j, "year");
         it.rating = opt(j, "rating");
+        it.imdbRating = opt(j, "imdbRating");
         it.genres = opt(j, "genres");
         it.description = opt(j, "description");
         it.subtitle = opt(j, "subtitle");

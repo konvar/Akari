@@ -20,4 +20,9 @@
     <string name="cant_open">无法打开 %1$s</string>
     <string name="date_format">M月d日 EEEE</string>
     <string name="dream_name">时钟</string>
+    <string name="trakt_redirect_hint">添加为你的 Trakt 应用注册的 HTTPS 重定向网址。</string>
+    <string name="trakt_pkce_hint">用连接到同一网络的手机扫码，在 Trakt 上授权 Akari，然后将重定向网址粘贴到手机上的表单中。</string>
+    <string name="trakt_bad_redirect">重定向网址与本次登录不匹配。请检查网址后重试。</string>
+    <string name="trakt_sign_in_expired">登录已过期。请打开新的二维码。</string>
+    <string name="trakt_exchange_failed">无法完成 Trakt 登录。请检查应用设置后重试。</string>
 </resources>

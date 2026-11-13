@@ -33,6 +33,7 @@ synopses in a hero at the top, and everything opening straight in your player ap
 **Home**
 - A hero for the focused title: clear logo, year, genres, age rating, ratings from IMDb, Trakt, TMDB, Rotten Tomatoes
   and more, and the full synopsis, which scrolls slowly when it is long.
+- Movie and series posters show available IMDb scores. Turn them off under Settings → Home rows → IMDb ratings on posters.
 - Continue Watching with time left (`23m left`), `New episode` and `Up next` badges.
 - Upcoming episodes of the shows you follow, with a live countdown before they air (style and timing configurable).
 - Content rows: trending, popular, box office, most watched, most anticipated, popular lists, and Airing tonight.
@@ -158,13 +159,15 @@ Open **Settings** (the gear at the top right of Home).
 1. **API keys.** Each key is typed on your phone: scan the QR code, paste the key, done. Keys stay on the TV.
    - **MDBList** (free, [mdblist.com](https://mdblist.com/preferences/)): the ratings row, and MDBList tracking.
    - **OMDb** (free, [omdbapi.com](https://www.omdbapi.com/apikey.aspx)): IMDb ratings of episodes.
-   - **Trakt app** and **Simkl app**: release builds have no built-in Trakt or Simkl app. Create your own (free) and enter
-     its IDs here:
-     - Trakt: [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications), redirect URI `urn:ietf:wg:oauth:2.0:oob`.
-       Enter the Client ID and Client Secret.
-     - Simkl: [simkl.com/settings/developer](https://simkl.com/settings/developer). Enter the Client ID.
-2. **Tracking.** Choose where Continue Watching and the checkmarks come from, sign in with the code shown on screen,
-   and set how far back Continue Watching goes.
+   - **Trakt**: Create a [Trakt API app](https://app.trakt.tv/settings/apps/api). For personal Development apps,
+     register `https://localhost:49152/trakt/callback`. For Production apps, register an HTTPS callback on a
+     domain you control. Enter the Client ID and the exact redirect URL in Akari’s API keys settings.
+   - **Simkl**: Create an app at [simkl.com/settings/developer](https://simkl.com/settings/developer) and enter its Client ID.
+2. **Tracking.** Choose where Continue Watching and the checkmarks come from, sign in as prompted,
+   and set how far back Continue Watching goes. For Trakt, scan the QR code from a phone on the same network, open
+   the Trakt authorization link, approve access, then copy the full redirect URL into the phone form. If a legacy Trakt
+   session expires, reconnect once using this flow. With the localhost callback, the browser shows a connection
+   error after approval. Copy the full URL from the address bar into the phone form.
 3. **Playback.** Pick the player app, the trailer app, and the remote buttons.
 4. **Home rows.** Show, hide and reorder the rows (hold OK to move one), pick the row focused when the TV starts, and
    turn on the trailer behind the hero (muted or with sound, and after how many seconds).
@@ -181,6 +184,9 @@ adb shell settings put secure accessibility_enabled 1
 
 Then choose what each button opens in **Settings → Playback → Remote buttons**: the player app, a YouTube app, any app,
 or nothing. **Add a remote button** sets up any other key.
+
+On TVs that keep opening the stock Google TV launcher after you select Akari as Home, enable Akari’s **Home button**
+service under **Settings → Accessibility**. This also supports remotes that send an All Apps key for Home.
 
 ## Build from source
 
@@ -199,7 +205,7 @@ Settings:
 
 ```properties
 TRAKT_CLIENT_ID=...
-TRAKT_CLIENT_SECRET=...
+TRAKT_REDIRECT_URI=https://localhost:49152/trakt/callback
 SIMKL_CLIENT_ID=...
 # TMDB key for artwork, age ratings, trailers and cast (release builds get Akari's own)
 TMDB_API_KEY=...

@@ -23,24 +23,19 @@ import java.util.TimeZone;
 
 /**
  * Continue Watching straight from Trakt, the same account Nuvio syncs to: paused movies and episodes from
- * /sync/playback, then the next aired episode of recently watched shows. Sign-in is Trakt's device-code flow
- * (a code entered at trakt.tv/activate), using the Trakt API app configured in launcher/local.properties.
+ * /sync/playback, then the next aired episode of recently watched shows.
  */
 final class Trakt {
 
     private static final String TAG = "TvHomeTrakt";
     private static final String API = "https://api.trakt.tv";
+    static final String AUTH = "https://auth.trakt.tv";
     private static final String PREFS = "trakt";
+    private static final Object TOKEN_LOCK = new Object();
+    /** Refresh tokens rotate, so only one refresh can be in flight. */
+    private static final Object REFRESH_LOCK = new Object();
     private static final int UP_NEXT_SHOWS = Integer.MAX_VALUE;
     static final int MAX_ITEMS = Integer.MAX_VALUE;
-
-    static final class DeviceCode {
-        String deviceCode;
-        String userCode;
-        String verificationUrl;
-        int interval;
-        long expiresAt;
-    }
 
     /** IMDb ids of watched movies and finished shows, refreshed with Continue Watching. */
     static volatile Set<String> watchedIds = new HashSet<>();
@@ -173,12 +168,12 @@ final class Trakt {
         return !BuildConfig.TRAKT_CLIENT_ID.isEmpty() ? BuildConfig.TRAKT_CLIENT_ID : Keys.get(Keys.TRAKT_ID);
     }
 
-    static String clientSecret() {
-        return !BuildConfig.TRAKT_CLIENT_SECRET.isEmpty() ? BuildConfig.TRAKT_CLIENT_SECRET : Keys.get(Keys.TRAKT_SECRET);
+    static boolean configured() {
+        return !clientId().isEmpty();
     }
 
-    static boolean configured() {
-        return !clientId().isEmpty() && !clientSecret().isEmpty();
+    static String redirectUri() {
+        return !BuildConfig.TRAKT_REDIRECT_URI.isEmpty() ? BuildConfig.TRAKT_REDIRECT_URI : Keys.get(Keys.TRAKT_REDIRECT);
     }
 
     static boolean signedIn(Context c) {
@@ -186,7 +181,9 @@ final class Trakt {
     }
 
     static void signOut(Context c) {
-        prefs(c).edit().clear().apply();
+        synchronized (TOKEN_LOCK) {
+            prefs(c).edit().clear().apply();
+        }
         c.getApplicationContext().getSharedPreferences("trakt_progress", Context.MODE_PRIVATE).edit().clear().apply();
         watchedIds = new HashSet<>();
     }
@@ -195,58 +192,34 @@ final class Trakt {
         return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    // ---- device sign-in ----
-
-    static DeviceCode requestCode() throws IOException, JSONException {
-        JSONObject body = new JSONObject().put("client_id", clientId());
-        Net.Response r = Net.json("POST", API + "/oauth/device/code", new HashMap<>(), body.toString());
-        if (r.code != 200) throw new IOException("device code HTTP " + r.code);
-        JSONObject j = new JSONObject(r.body);
-        DeviceCode d = new DeviceCode();
-        d.deviceCode = j.getString("device_code");
-        d.userCode = j.getString("user_code");
-        d.verificationUrl = j.optString("verification_url", "https://trakt.tv/activate");
-        d.interval = Math.max(1, j.optInt("interval", 5));
-        d.expiresAt = System.currentTimeMillis() + j.optInt("expires_in", 600) * 1000L;
-        return d;
-    }
-
-    /** One poll: true once the user approved and tokens are stored, false while still pending. */
-    static boolean pollToken(Context c, DeviceCode d) throws IOException, JSONException {
+    static JSONObject exchangeCode(String clientId, String redirectUri, String code, String verifier)
+            throws IOException, JSONException {
         JSONObject body = new JSONObject()
-                .put("code", d.deviceCode)
-                .put("client_id", clientId())
-                .put("client_secret", clientSecret());
-        Net.Response r = Net.json("POST", API + "/oauth/device/token", new HashMap<>(), body.toString());
-        if (r.code == 200) {
-            store(c, new JSONObject(r.body));
-            return true;
+                .put("grant_type", "authorization_code")
+                .put("client_id", clientId)
+                .put("redirect_uri", redirectUri)
+                .put("code", code)
+                .put("code_verifier", verifier);
+        Net.Response r = Net.json("POST", AUTH + "/oauth/token", new HashMap<>(), body.toString());
+        if (r.code != 200) throw new IOException("authorization code HTTP " + r.code);
+        return new JSONObject(r.body);
+    }
+
+    static void store(Context c, JSONObject tokens, String redirectUri) throws JSONException {
+        String access = tokens.getString("access_token");
+        String refresh = tokens.getString("refresh_token");
+        if (access.isEmpty() || refresh.isEmpty()) throw new JSONException("Empty Trakt token");
+        long expires = (tokens.optLong("created_at", System.currentTimeMillis() / 1000)
+                + tokens.optLong("expires_in", 604_800)) * 1000L;
+        synchronized (TOKEN_LOCK) {
+            prefs(c).edit()
+                    .putString("access", access)
+                    .putString("refresh", refresh)
+                    .putString("redirect_uri", redirectUri)
+                    .putLong("expires", expires)
+                    .apply();
         }
-        if (r.code == 400 || r.code == 429) return false; // pending or polling too fast
-        throw new IOException("device token HTTP " + r.code);
     }
-
-    /**
-     * Trakt sometimes answers that a token lasts 24 hours (86400 s) while it really lasts 7 days; taken at its word,
-     * the token was "about to expire" on every call, so it was renewed over and over and the renewals raced each
-     * other until Trakt refused one and Akari signed out. As in NuvioTV, that value is read as 7 days.
-     */
-    private static long lifetime(JSONObject tokens) {
-        long in = tokens.optLong("expires_in", 604_800);
-        return in == 86_400 ? 604_800 : in;
-    }
-
-    private static void store(Context c, JSONObject tokens) {
-        long expires = (tokens.optLong("created_at", System.currentTimeMillis() / 1000) + lifetime(tokens)) * 1000L;
-        prefs(c).edit()
-                .putString("access", tokens.optString("access_token"))
-                .putString("refresh", tokens.optString("refresh_token"))
-                .putLong("expires", expires)
-                .apply();
-    }
-
-    /** One renewal at a time: each renewal makes the previous refresh token invalid. */
-    private static final Object REFRESH_LOCK = new Object();
 
     private static String accessToken(Context c) throws IOException, JSONException {
         SharedPreferences p = prefs(c);
@@ -264,31 +237,33 @@ final class Trakt {
             String now = p.getString("access", null);
             if (now == null) return null;
             if (!now.equals(stale) && System.currentTimeMillis() < p.getLong("expires", 0) - 3600 * 1000L) return now;
+            String redirect = p.getString("redirect_uri", redirectUri());
             JSONObject body = new JSONObject()
                     .put("refresh_token", p.getString("refresh", ""))
                     .put("client_id", clientId())
-                    .put("client_secret", clientSecret())
-                    .put("redirect_uri", "urn:ietf:wg:oauth:2.0:oob")
                     .put("grant_type", "refresh_token");
+            if (!redirect.isEmpty()) body.put("redirect_uri", redirect);
             Net.Response r;
             try {
-                r = Net.json("POST", API + "/oauth/token", new HashMap<>(), body.toString());
+                r = Net.json("POST", AUTH + "/oauth/token", new HashMap<>(), body.toString());
             } catch (IOException e) {
                 // No network (TV just woke up): keep the sign-in and the current token.
                 android.util.Log.w("TvHomeTrakt", "token renewal: no network, keeping sign-in");
                 return now;
             }
-            if (r.code == 200) {
-                store(c, new JSONObject(r.body));
-                android.util.Log.i("TvHomeTrakt", "token renewed");
+            synchronized (TOKEN_LOCK) {
+                if (!now.equals(p.getString("access", null))) return p.getString("access", null);
+                if (r.code == 200) {
+                    store(c, new JSONObject(r.body), redirect);
+                    Log.i(TAG, "token renewed");
+                } else {
+                    Log.w(TAG, "token renewal HTTP " + r.code);
+                    if (r.code == 400 && "invalid_grant".equals(new JSONObject(r.body).optString("error"))) {
+                        signOut(c);
+                    }
+                }
                 return p.getString("access", null);
             }
-            android.util.Log.w("TvHomeTrakt", "token renewal HTTP " + r.code);
-            // Only a refusal of the refresh token itself ends the sign-in; anything else (rate limit, server
-            // trouble) keeps it for the next try.
-            if (r.code == 400 || r.code == 401 || r.code == 403) signOut(c);
-            else return now;
-            return null;
         }
     }
 
