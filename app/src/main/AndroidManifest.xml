@@ -70,6 +70,8 @@
         android:theme="@style/Theme.TvHome"
         android:allowBackup="false"
         android:localeConfig="@xml/locales_config">
+        <!-- Lets the TV's own profiler (Perfetto, simpleperf over adb) measure the release build; no other effect. -->
+        <profileable android:shell="true" />
 
         <activity
             android:name=".MainActivity"

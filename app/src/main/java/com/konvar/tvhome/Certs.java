@@ -73,7 +73,7 @@ final class Certs {
         t.setTextColor(0xFFFFFFFF);
         t.setTextSize(11.5f);
         t.setTypeface(c.getResources().getFont(R.font.outfit));
-        t.setFontVariationSettings("'wght' 600");
+        Fonts.weight(t, 600);
         t.setGravity(Gravity.CENTER);
         // Centred by padding around the text, as in Nuvio, not by a fixed box height.
         t.setPadding(Rows.px(c, 8), Rows.px(c, 4), Rows.px(c, 8), Rows.px(c, 4));

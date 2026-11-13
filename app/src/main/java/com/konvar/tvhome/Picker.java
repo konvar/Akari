@@ -250,7 +250,7 @@ final class Picker {
         t.setTextSize(sp);
         t.setTextColor(color);
         t.setTypeface(a.getResources().getFont(R.font.outfit));
-        t.setFontVariationSettings("'wght' " + weight);
+        Fonts.weight(t, weight);
         return t;
     }
 

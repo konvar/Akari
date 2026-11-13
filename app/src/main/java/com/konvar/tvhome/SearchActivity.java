@@ -376,7 +376,7 @@ public class SearchActivity extends Activity implements Rows.Listener {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(android.view.Gravity.CENTER_VERTICAL);
         TextView title = text(getString(R.string.recent_searches), 15);
-        title.setFontVariationSettings("'wght' 500");
+        Fonts.weight(title, 500);
         head.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         TextView clear = button(getString(R.string.clear_history));
         clear.setOnClickListener(v -> {

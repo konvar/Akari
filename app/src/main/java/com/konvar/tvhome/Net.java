@@ -95,14 +95,20 @@ final class Net {
                     while ((n = s.read(buf)) > 0) out.write(buf, 0, n);
                     text = out.toString("UTF-8");
                 }
+            } else {
+                c.disconnect();
             }
             Response res = new Response(code, text);
             res.pageCount = c.getHeaderField("X-Pagination-Page-Count");
             res.itemCount = c.getHeaderField("X-Pagination-Item-Count");
             res.retryAfter = c.getHeaderField("Retry-After");
             return res;
-        } finally {
+        } catch (IOException | RuntimeException e) {
+            // Only a failed connection is torn down. On success the body was read to the end and its stream
+            // closed, which hands the socket back to the pool: the next call to the same host skips the TCP and
+            // TLS handshake (disconnect() would close the socket and force a new handshake every time).
             c.disconnect();
+            throw e;
         }
     }
 
@@ -117,8 +123,10 @@ final class Net {
             int n;
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
             return out.toByteArray();
-        } finally {
+        } catch (IOException | RuntimeException e) {
+            // As in jsonOnce: keep the socket for reuse after a full read, drop it only after a failure.
             c.disconnect();
+            throw e;
         }
     }
 }

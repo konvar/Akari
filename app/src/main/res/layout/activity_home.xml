@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -72,7 +73,7 @@
                 android:textColor="#E6FFFFFF"
                 android:textSize="22sp"
                 android:fontFamily="@font/outfit"
-                android:fontVariationSettings="'wght' 300" />
+                app:weight="300" />
 
             <TextView
                 android:id="@+id/weatherButton"
@@ -114,7 +115,7 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="30sp"
                 android:fontFamily="@font/outfit"
-                android:fontVariationSettings="'wght' 500"
+                app:weight="500"
                 android:includeFontPadding="false" />
 
             <TextView

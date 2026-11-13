@@ -72,7 +72,7 @@ public class PosterDream extends DreamService {
         logo.setMaxHeight(Rows.px(this, 150));
         caption.addView(logo, new LinearLayout.LayoutParams(Rows.px(this, 460), Rows.px(this, 150)));
         title = text(34, 0xFFFFFFFF);
-        title.setFontVariationSettings("'wght' 700");
+        Fonts.weight(title, 700);
         title.setMaxLines(2);
         title.setGravity(Gravity.CENTER);
         caption.addView(title);
@@ -88,7 +88,7 @@ public class PosterDream extends DreamService {
         clock.setTextSize(22);
         clock.setTextColor(0xF2FFFFFF);
         clock.setTypeface(getResources().getFont(R.font.outfit));
-        clock.setFontVariationSettings("'wght' 300");
+        Fonts.weight(clock, 300);
         FrameLayout.LayoutParams kp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
         kp.topMargin = Rows.px(this, 40);
         kp.rightMargin = Rows.px(this, 56);

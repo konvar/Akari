@@ -516,13 +516,13 @@ public class DetailsActivity extends Activity implements Rows.Listener {
         title.setTextColor(0xFFFFFFFF);
         title.setTextSize(22);
         title.setTypeface(getResources().getFont(R.font.outfit));
-        title.setFontVariationSettings("'wght' 500");
+        Fonts.weight(title, 500);
         panel.addView(title);
         TextView line = new TextView(this);
         line.setTextColor(0xB3FFFFFF);
         line.setTextSize(13);
         line.setTypeface(getResources().getFont(R.font.outfit));
-        line.setFontVariationSettings("'wght' 400");
+        Fonts.weight(line, 400);
         line.setPadding(0, Rows.px(this, 6), 0, Rows.px(this, 14));
         line.setText("Move over an episode to see its name");
         panel.addView(line);
@@ -538,7 +538,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
             label.setTextColor(0xCCFFFFFF);
             label.setTextSize(13);
             label.setTypeface(getResources().getFont(R.font.outfit));
-            label.setFontVariationSettings("'wght' 500");
+            Fonts.weight(label, 500);
             row.addView(label, new LinearLayout.LayoutParams(Rows.px(this, 40), cell));
             label.setGravity(android.view.Gravity.CENTER_VERTICAL);
             for (SeriesGraph.Episode e : s.getValue().values()) {
@@ -548,7 +548,7 @@ public class DetailsActivity extends Activity implements Rows.Listener {
                 c.setTextSize(12);
                 c.setTextColor(e.rating >= 7 && e.rating < 8 ? 0xFF111111 : 0xFFFFFFFF);
                 c.setTypeface(getResources().getFont(R.font.outfit));
-                c.setFontVariationSettings("'wght' 600");
+                Fonts.weight(c, 600);
                 android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
                 android.graphics.drawable.GradientDrawable lit = new android.graphics.drawable.GradientDrawable();
                 lit.setCornerRadius(Rows.px(this, 8));

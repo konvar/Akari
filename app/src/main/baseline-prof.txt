@@ -1,0 +1,3 @@
+# Akari's own code is small: compile all of it ahead of time (hot, start-up and post-start-up).
+HSPLcom/konvar/tvhome/**->**(**)**
+Lcom/konvar/tvhome/**;

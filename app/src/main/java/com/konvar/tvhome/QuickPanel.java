@@ -46,7 +46,7 @@ final class QuickPanel {
         java.util.Date now = new java.util.Date();
         when.addView(text(a, new java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault()).format(now), 14, 0xCCFFFFFF));
         TextView time = text(a, android.text.format.DateFormat.getTimeFormat(a).format(now), 32, 0xFFFFFFFF);
-        time.setFontVariationSettings("'wght' 500");
+        Fonts.weight(time, 500);
         when.addView(time);
         head.addView(when, new LinearLayout.LayoutParams(0, -2, 1));
         // The gear here closes the panel again (Android's settings have their own row at the bottom).
@@ -190,7 +190,7 @@ final class QuickPanel {
         TextView title = text(a, t.title, 15, 0);
         title.setTextColor(fg);
         title.setDuplicateParentStateEnabled(true);
-        title.setFontVariationSettings("'wght' 500");
+        Fonts.weight(title, 500);
         words.addView(title);
         if (t.sub != null) {
             TextView sub = text(a, t.sub, 11.5f, 0);

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- A studio or network, as in Nuvio: its logo on a white rounded card, or its name when it has no logo. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="140dp"
     android:layout_height="64dp"
     android:layout_marginEnd="14dp"
@@ -32,5 +33,5 @@
         android:textColor="#FF5A5F6A"
         android:textSize="12sp"
         android:fontFamily="@font/outfit"
-        android:fontVariationSettings="'wght' 500" />
+        app:weight="500" />
 </FrameLayout>

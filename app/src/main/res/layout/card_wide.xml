@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Continue Watching card: landscape still, title and episode over a bottom fade, progress along the edge. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="208dp"
     android:layout_height="117dp"
     android:layout_marginEnd="14dp"
@@ -9,7 +10,7 @@
     android:focusable="true"
     android:clickable="true">
 
-    <ImageView
+    <com.konvar.tvhome.CardImage
         android:id="@+id/cardImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -41,7 +42,7 @@
             android:textColor="#FFFFFFFF"
             android:textSize="12.5sp"
             android:fontFamily="@font/outfit"
-            android:fontVariationSettings="'wght' 500" />
+            app:weight="500" />
 
         <TextView
             android:id="@+id/cardSubtitle"
@@ -81,7 +82,7 @@
         android:textColor="#FFFFFFFF"
         android:textSize="11.5sp"
         android:fontFamily="@font/outfit"
-        android:fontVariationSettings="'wght' 600"
+        app:weight="600"
         android:fontFeatureSettings="tnum"
         android:visibility="gone" />
 

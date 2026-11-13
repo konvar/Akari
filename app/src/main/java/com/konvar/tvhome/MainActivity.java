@@ -114,7 +114,6 @@ public class MainActivity extends Activity implements Rows.Listener {
         // The root paints the whole screen in the ambient colour, so the window's own background under it is a
         // wasted full-screen fill on every frame. It stays in the theme for the instant before the first frame.
         root.post(() -> getWindow().setBackgroundDrawable(null));
-        preferFastestRefreshRate();
         heroImage = findViewById(R.id.heroImage);
         heroTitle = findViewById(R.id.heroTitle);
         heroMeta = findViewById(R.id.heroMeta);
@@ -638,7 +637,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             pill.setTextColor(0xFFFFFFFF);
             pill.setTextSize(14);
             pill.setTypeface(getResources().getFont(R.font.outfit));
-            pill.setFontVariationSettings("'wght' 500");
+            Fonts.weight(pill, 500);
             int h = Rows.px(this, 18), v = Rows.px(this, 9);
             pill.setPadding(h, v, h, v);
             android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
@@ -938,27 +937,6 @@ public class MainActivity extends Activity implements Rows.Listener {
      * A smooth fade driven by the display's frames, so it runs even with Android's animations switched off in the
      * developer options; eased in and out.
      */
-    /**
-     * The launcher draws at the panel's refresh rate (Android paces every frame to it). When the panel offers a
-     * faster mode at the same resolution (120 or 144 Hz), the home screen asks for it; modes at another resolution
-     * are never chosen, so the TV does not re-sync or blank the picture. A panel with one mode is left as it is.
-     */
-    private void preferFastestRefreshRate() {
-        android.view.Display d = getWindowManager().getDefaultDisplay();
-        if (d == null) return;
-        android.view.Display.Mode now = d.getMode(), best = now;
-        for (android.view.Display.Mode m : d.getSupportedModes()) {
-            if (m.getPhysicalWidth() == now.getPhysicalWidth() && m.getPhysicalHeight() == now.getPhysicalHeight()
-                    && m.getRefreshRate() > best.getRefreshRate() + 0.5f) {
-                best = m;
-            }
-        }
-        if (best == now) return;
-        android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
-        lp.preferredDisplayModeId = best.getModeId();
-        getWindow().setAttributes(lp);
-    }
-
     /**
      * The hero's two gradient fades only blend the backdrop into the page. With no backdrop showing (and no
      * trailer added to the hero box) they would still be filled on every frame, so they are hidden instead.

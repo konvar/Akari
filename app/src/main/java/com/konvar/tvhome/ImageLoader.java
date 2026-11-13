@@ -132,16 +132,27 @@ final class ImageLoader {
     private static final long DISK_LIMIT = 1024L * 1024 * 1024;
     private static int writes;
 
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+    private static volatile java.io.File imageDir;
+
     private static java.io.File diskFile(android.content.Context c, String url) {
-        java.io.File dir = new java.io.File(c.getFilesDir(), "images");
-        if (!dir.exists()) dir.mkdirs();
+        java.io.File dir = imageDir;
+        if (dir == null) {
+            dir = new java.io.File(c.getFilesDir(), "images");
+            if (!dir.exists()) dir.mkdirs();
+            imageDir = dir;
+        }
         String name;
         try {
             byte[] h = java.security.MessageDigest.getInstance("SHA-1")
                     .digest(url.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : h) sb.append(String.format("%02x", b));
-            name = sb.toString();
+            // Hex by hand: String.format per byte was 20 formatter objects for every image looked up.
+            char[] out = new char[h.length * 2];
+            for (int i = 0; i < h.length; i++) {
+                out[i * 2] = HEX[(h[i] >> 4) & 0xF];
+                out[i * 2 + 1] = HEX[h[i] & 0xF];
+            }
+            name = new String(out);
         } catch (java.security.NoSuchAlgorithmException e) {
             name = Integer.toHexString(url.hashCode());
         }
@@ -173,13 +184,22 @@ final class ImageLoader {
         o.inJustDecodeBounds = false;
         o.inSampleSize = sample;
         o.inPreferredConfig = alpha ? Bitmap.Config.ARGB_8888 : Bitmap.Config.RGB_565;
-        Bitmap b = BitmapFactory.decodeByteArray(data, 0, data.length, o);
-        if (b != null && b.getWidth() > width * 1.25f) {
-            int h = Math.max(1, Math.round(b.getHeight() * (width / (float) b.getWidth())));
-            Bitmap scaled = Bitmap.createScaledBitmap(b, width, h, true);
-            if (scaled != b) b.recycle();
-            b = scaled;
+        int sampledWidth = (o.outWidth + sample - 1) / sample;
+        if (sampledWidth > width * 1.25f) {
+            // Scale to the shown width inside the decoder: one bitmap, instead of a second scaled copy made
+            // after a full decode (twice the memory for a moment and more garbage to collect while scrolling).
+            o.inScaled = true;
+            o.inDensity = sampledWidth;
+            o.inTargetDensity = width;
         }
+        Bitmap b = BitmapFactory.decodeByteArray(data, 0, data.length, o);
+        // The density trick above tags the bitmap with inTargetDensity; give it the screen's density back, as a
+        // plain decode has, so its drawable size (used to fit clear logos) is unchanged.
+        if (b != null && o.inScaled && o.inDensity > 0) {
+            b.setDensity(android.content.res.Resources.getSystem().getDisplayMetrics().densityDpi);
+        }
+        // Upload to the GPU now, on this worker thread, instead of on the first frame that draws it.
+        if (b != null) b.prepareToDraw();
         return b;
     }
 

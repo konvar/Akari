@@ -1056,7 +1056,7 @@ public class SettingsActivity extends Activity {
         t.setTextColor(color);
         t.setTypeface(getResources().getFont(R.font.outfit));
         // The variable font starts at its thinnest weight: regular text gets 400 so it stays readable on a TV.
-        t.setFontVariationSettings(medium ? "'wght' 500" : "'wght' 400");
+        Fonts.weight(t, medium ? 500 : 400);
         return t;
     }
 

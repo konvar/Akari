@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Outfit weight for a TextView or TextClock (see Fonts.java), instead of android:fontVariationSettings. -->
+    <declare-styleable name="Fonts">
+        <attr name="weight" format="integer" />
+    </declare-styleable>
+</resources>

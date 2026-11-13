@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- A season tile: "Season 2", how much is watched, a check when all of it is. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="150dp"
     android:layout_height="64dp"
     android:layout_marginEnd="12dp"
@@ -31,7 +32,7 @@
             android:textColor="#FFFFFFFF"
             android:textSize="15sp"
             android:fontFamily="@font/outfit"
-            android:fontVariationSettings="'wght' 500" />
+            app:weight="500" />
 
         <TextView
             android:id="@+id/cardSubtitle"

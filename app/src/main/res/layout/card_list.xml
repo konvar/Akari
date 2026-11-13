@@ -2,6 +2,7 @@
 <!-- A user-made Trakt list, as on Trakt's site: its first poster, the next four fanned out behind it, then its
      name and author. The posters are filled in by ListArt. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="212dp"
     android:layout_height="wrap_content"
     android:layout_marginEnd="18dp"
@@ -43,7 +44,7 @@
         android:textColor="#FFFFFFFF"
         android:textSize="13sp"
         android:fontFamily="@font/outfit"
-        android:fontVariationSettings="'wght' 500" />
+        app:weight="500" />
 
     <TextView
         android:id="@+id/cardSubtitle"

@@ -163,7 +163,7 @@ final class StorageNotice {
             text.setTextColor(0xFFFFFFFF);
             text.setTextSize(14);
             text.setTypeface(a.getResources().getFont(R.font.outfit));
-            text.setFontVariationSettings("'wght' 500");
+            Fonts.weight(text, 500);
             box.addView(text);
             box.setAlpha(0f);
             // Under the top bar, at the right, below the search, clock and weather buttons.
