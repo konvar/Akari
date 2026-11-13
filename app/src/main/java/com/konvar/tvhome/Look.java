@@ -50,6 +50,27 @@ final class Look {
         v.setLayoutParams(lp);
     }
 
+    /**
+     * Rounded clipping for a card image without drawing its background. The layouts give the image a transparent
+     * shape only for its outline; drawn, it is one more full layer of fill per card, which the TV's GPU pays for on
+     * every frame. The shape is kept for the outline and no longer drawn.
+     */
+    static void clipRound(View image) {
+        if (image == null) return;
+        final android.graphics.drawable.Drawable shape = image.getBackground();
+        if (shape != null) {
+            image.setBackground(null);
+            image.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, android.graphics.Outline outline) {
+                    shape.setBounds(0, 0, view.getWidth(), view.getHeight());
+                    shape.getOutline(outline);
+                }
+            });
+        }
+        image.setClipToOutline(true);
+    }
+
     /** A row: the room above and below its cards follows the spacing. */
     static void row(View row) {
         float g = GAP[spacing(row.getContext())];

@@ -679,7 +679,7 @@ final class Rows {
                 progress = v.findViewById(R.id.cardProgress);
                 check = v.findViewById(R.id.cardCheck);
                 countdown = v.findViewById(R.id.cardCountdown);
-                image.setClipToOutline(true);
+                Look.clipRound(image);
                 v.setOnClickListener(x -> {
                     CardAdapter a = (CardAdapter) getBindingAdapter();
                     int p = getBindingAdapterPosition();

@@ -15,3 +15,7 @@ local.properties
 .idea/
 *.iml
 .DS_Store
+
+# Research notes and reports (local only)
+research_notes/
+reports/

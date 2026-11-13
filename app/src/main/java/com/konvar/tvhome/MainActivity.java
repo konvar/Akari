@@ -111,6 +111,10 @@ public class MainActivity extends Activity implements Rows.Listener {
         findViewById(R.id.fadeLeft).setBackground(fadeLeft);
         findViewById(R.id.fadeBottom).setBackground(fadeBottom);
         applyAmbient(baseColor);
+        // The root paints the whole screen in the ambient colour, so the window's own background under it is a
+        // wasted full-screen fill on every frame. It stays in the theme for the instant before the first frame.
+        root.post(() -> getWindow().setBackgroundDrawable(null));
+        preferFastestRefreshRate();
         heroImage = findViewById(R.id.heroImage);
         heroTitle = findViewById(R.id.heroTitle);
         heroMeta = findViewById(R.id.heroMeta);
@@ -934,6 +938,40 @@ public class MainActivity extends Activity implements Rows.Listener {
      * A smooth fade driven by the display's frames, so it runs even with Android's animations switched off in the
      * developer options; eased in and out.
      */
+    /**
+     * The launcher draws at the panel's refresh rate (Android paces every frame to it). When the panel offers a
+     * faster mode at the same resolution (120 or 144 Hz), the home screen asks for it; modes at another resolution
+     * are never chosen, so the TV does not re-sync or blank the picture. A panel with one mode is left as it is.
+     */
+    private void preferFastestRefreshRate() {
+        android.view.Display d = getWindowManager().getDefaultDisplay();
+        if (d == null) return;
+        android.view.Display.Mode now = d.getMode(), best = now;
+        for (android.view.Display.Mode m : d.getSupportedModes()) {
+            if (m.getPhysicalWidth() == now.getPhysicalWidth() && m.getPhysicalHeight() == now.getPhysicalHeight()
+                    && m.getRefreshRate() > best.getRefreshRate() + 0.5f) {
+                best = m;
+            }
+        }
+        if (best == now) return;
+        android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.preferredDisplayModeId = best.getModeId();
+        getWindow().setAttributes(lp);
+    }
+
+    /**
+     * The hero's two gradient fades only blend the backdrop into the page. With no backdrop showing (and no
+     * trailer added to the hero box) they would still be filled on every frame, so they are hidden instead.
+     */
+    private void syncHeroFades() {
+        android.view.ViewGroup box = (android.view.ViewGroup) heroImage.getParent();
+        boolean show = heroImage.getAlpha() > 0f || box.getChildCount() > 3;
+        int vis = show ? View.VISIBLE : View.INVISIBLE;
+        View left = findViewById(R.id.fadeLeft), bottom = findViewById(R.id.fadeBottom);
+        if (left.getVisibility() != vis) left.setVisibility(vis);
+        if (bottom.getVisibility() != vis) bottom.setVisibility(vis);
+    }
+
     private void fade(View v, float to, long ms) {
         Object old = v.getTag(R.id.fade_anim);
         if (old instanceof android.view.Choreographer.FrameCallback) {
@@ -949,6 +987,7 @@ public class MainActivity extends Activity implements Rows.Listener {
                 float p = Math.min(1f, (now - t0[0]) / 1e6f / ms);
                 float eased = (float) (0.5 - 0.5 * Math.cos(Math.PI * p));
                 v.setAlpha(from + (to - from) * eased);
+                if (v == heroImage) syncHeroFades();
                 if (p < 1f) android.view.Choreographer.getInstance().postFrameCallback(this);
                 else v.setTag(R.id.fade_anim, null);
             }
@@ -1100,6 +1139,7 @@ public class MainActivity extends Activity implements Rows.Listener {
                 // Spotlight tiles: their picture fills the hero, with the page colour taken from it.
                 if (!sameUrl(it.thumb)) {
                     heroImage.setAlpha(0f);
+                syncHeroFades();
                     ImageLoader.load(heroImage, it.thumb, Prefetch.heroW(this), Prefetch.heroH(this), false, () -> {
                         if (heroItem != it) return;
                         android.graphics.drawable.Drawable d = heroImage.getDrawable();
@@ -1168,6 +1208,7 @@ public class MainActivity extends Activity implements Rows.Listener {
 
             if (!sameUrl(it.background)) {
                 heroImage.setAlpha(0f);
+                syncHeroFades();
                 ImageLoader.load(heroImage, it.background, Prefetch.heroW(this), Prefetch.heroH(this), false, () -> {
                     if (heroItem != it) return;
                     android.graphics.drawable.Drawable d = heroImage.getDrawable();
