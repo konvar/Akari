@@ -1,6 +1,7 @@
 package com.konvar.tvhome;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.provider.Settings;
@@ -18,8 +19,6 @@ import java.util.List;
 final class A11yGuard {
 
     private static final String TAG = "TvHomeA11y";
-    private static final String SERVICE = "com.konvar.tvhome/.InputKeyService";
-    private static final String SERVICE_FULL = "com.konvar.tvhome/com.konvar.tvhome.InputKeyService";
 
     private A11yGuard() {
     }
@@ -39,7 +38,10 @@ final class A11yGuard {
     private static void check(Context c) throws InterruptedException {
         SharedPreferences prefs = c.getSharedPreferences("a11y", Context.MODE_PRIVATE);
         String enabled = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-        boolean listed = enabled != null && (enabled.contains(SERVICE) || enabled.contains(SERVICE_FULL));
+        ComponentName component = new ComponentName(c, InputKeyService.class);
+        String service = component.flattenToShortString();
+        String serviceFull = component.flattenToString();
+        boolean listed = enabled != null && (enabled.contains(service) || enabled.contains(serviceFull));
         if (running(c)) {
             prefs.edit().putBoolean("wanted", true).apply();
             return;
@@ -48,14 +50,14 @@ final class A11yGuard {
         if (!prefs.getBoolean("wanted", false)) return;
         // Off, or on but not running: write the list without it, then with it, so Android binds it again.
         String others = enabled == null || "null".equals(enabled) ? "" : enabled
-                .replace(":" + SERVICE_FULL, "").replace(SERVICE_FULL + ":", "").replace(SERVICE_FULL, "")
-                .replace(":" + SERVICE, "").replace(SERVICE + ":", "").replace(SERVICE, "");
+                .replace(":" + serviceFull, "").replace(serviceFull + ":", "").replace(serviceFull, "")
+                .replace(":" + service, "").replace(service + ":", "").replace(service, "");
         android.content.ContentResolver r = c.getContentResolver();
         for (int attempt = 1; attempt <= 3; attempt++) {
             Settings.Secure.putString(r, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, others);
             Thread.sleep(700);
             Settings.Secure.putString(r, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                    others.isEmpty() ? SERVICE : others + ":" + SERVICE);
+                    others.isEmpty() ? service : others + ":" + service);
             Settings.Secure.putInt(r, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
             Thread.sleep(1500);
             if (running(c)) {

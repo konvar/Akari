@@ -185,6 +185,9 @@ adb shell settings put secure accessibility_enabled 1
 Then choose what each button opens in **Settings → Playback → Remote buttons**: the player app, a YouTube app, any app,
 or nothing. **Add a remote button** sets up any other key.
 
+On TVs that keep opening the stock Google TV launcher after you select Akari as Home, enable Akari’s **Home button**
+service under **Settings → Accessibility**. This also supports remotes that send an All Apps key for Home.
+
 ## Build from source
 
 Requirements: JDK 17 and the Android SDK (Android Studio includes both).
