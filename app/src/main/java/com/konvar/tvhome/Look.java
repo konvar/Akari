@@ -56,10 +56,18 @@ final class Look {
      * every frame. The shape is kept for the outline and no longer drawn.
      */
     static void clipRound(View image) {
+        clipRound(image, false);
+    }
+
+    /**
+     * As {@link #clipRound(View)}; with {@code keepBackground} the shape stays drawn (a placeholder until the
+     * picture arrives; the caller removes it then), while the outline no longer depends on it.
+     */
+    static void clipRound(View image, boolean keepBackground) {
         if (image == null) return;
         final android.graphics.drawable.Drawable shape = image.getBackground();
         if (shape != null) {
-            image.setBackground(null);
+            if (!keepBackground) image.setBackground(null);
             image.setOutlineProvider(new android.view.ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, android.graphics.Outline outline) {

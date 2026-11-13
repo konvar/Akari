@@ -63,13 +63,17 @@ final class ListArt {
             v.setTag("poster");
             v.setScaleType(ImageView.ScaleType.CENTER_CROP);
             v.setBackgroundResource(R.drawable.card_bg);
-            v.setClipToOutline(true);
+            // Grey placeholder until the poster arrives, then dropped: under an opaque poster it was one more
+            // full fill per poster on every frame. The rounded outline does not depend on it.
+            Look.clipRound(v, true);
             if (i > 0) v.setColorFilter(android.graphics.Color.argb(40 + i * 25, 0, 0, 0));
             v.setElevation(Rows.px(c, 6 - i));
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h);
             lp.leftMargin = i * step;
             stack.addView(v, lp);
-            ImageLoader.load(v, posters.get(i), w, h);
+            ImageLoader.load(v, posters.get(i), w, h, false, () -> {
+                if (v.getDrawable() != null) v.setBackground(null);
+            });
         }
     }
 }

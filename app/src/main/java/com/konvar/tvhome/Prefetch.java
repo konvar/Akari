@@ -65,6 +65,16 @@ final class Prefetch {
         }
     }
 
+    /** Starts the details page of a focused movie or show (no-op for apps, episodes, people, lists, guide cards). */
+    static void focused(Context c, Object o) {
+        if (!(o instanceof Catalog.Item)) return;
+        Catalog.Item it = (Catalog.Item) o;
+        if (it.id == null || !it.id.startsWith("tt") || "list".equals(it.type) || "more".equals(it.type)
+                || "season".equals(it.type) || "episode".equals(it.type) || "person".equals(it.type)
+                || "guide".equals(it.type) || "comment".equals(it.type) || "spotlight".equals(it.type)) return;
+        DetailsPrefetch.get(c, it);
+    }
+
     static void around(Context c, List<?> items, int pos) {
         Context app = c.getApplicationContext();
         for (int d : new int[]{1, 2, -1}) {

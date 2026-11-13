@@ -759,7 +759,11 @@ final class Rows {
                         List<Object> rowItems = a.row.items;
                         // Not for cards passed while a key is held: only where focus settles (FocusPace).
                         x.postDelayed(() -> {
-                            if (x.isFocused() && !FocusPace.quick()) Prefetch.around(x.getContext(), rowItems, p);
+                            if (!x.isFocused() || FocusPace.quick()) return;
+                            // The focused title's whole details page, on every screen with title cards (Home,
+                            // lists, watchlists, search, calendar, a page's related rows), then its neighbours.
+                            if (p < rowItems.size()) Prefetch.focused(x.getContext(), rowItems.get(p));
+                            Prefetch.around(x.getContext(), rowItems, p);
                         }, 200 + FocusPace.extra());
                     }
                 });

@@ -34,6 +34,27 @@ final class HeroTrailer {
     private final FrameLayout box;
     private final Context c;
     private TextureView texture;
+    /**
+     * Android 12+: the trailer plays in a SurfaceView, which the display hardware composes on its own, so the
+     * UI is not redrawn for every video frame (with the TextureView the whole Home redrew about 25 times a
+     * second while a trailer played). Older Android keeps the TextureView, whose clipping is reliable there.
+     */
+    private android.view.SurfaceView surfaceView;
+    private boolean surfaceReady;
+    private int videoW, videoH;
+
+    private static boolean useSurfaceView() {
+        return android.os.Build.VERSION.SDK_INT >= 31;
+    }
+
+    private View videoView() {
+        return surfaceView != null ? surfaceView : texture;
+    }
+
+    private void videoAlpha(float a) {
+        View v = videoView();
+        if (v != null) v.setAlpha(a);
+    }
     private MediaPlayer player;
     /** The player's output into the texture; released with the player (it was leaked once per trailer). */
     private Surface surface;
@@ -132,7 +153,7 @@ final class HeroTrailer {
         generation++;
         box.removeCallbacks(start);
         showing(false);
-        if (texture != null) texture.setAlpha(0f);
+        videoAlpha(0f);
         if (player != null) {
             try {
                 player.release();
@@ -227,7 +248,38 @@ final class HeroTrailer {
     }
 
     private void playFile(String url, int gen) {
-        if (texture == null) {
+        if (useSurfaceView()) {
+            if (surfaceView == null) {
+                surfaceView = new android.view.SurfaceView(c);
+                surfaceView.setAlpha(0f);
+                surfaceView.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+                    @Override
+                    public void surfaceCreated(android.view.SurfaceHolder h) {
+                        surfaceReady = true;
+                        Runnable r = pendingGo;
+                        pendingGo = null;
+                        if (r != null) r.run();
+                    }
+
+                    @Override
+                    public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int hh) {
+                    }
+
+                    @Override
+                    public void surfaceDestroyed(android.view.SurfaceHolder h) {
+                        surfaceReady = false;
+                        if (player != null) {
+                            try {
+                                player.setSurface(null);
+                            } catch (RuntimeException ignored) {
+                            }
+                        }
+                    }
+                });
+                // Over the backdrop, under the fades into the page.
+                box.addView(surfaceView, 1, new FrameLayout.LayoutParams(-1, -1, android.view.Gravity.CENTER));
+            }
+        } else if (texture == null) {
             texture = new TextureView(c);
             texture.setAlpha(0f);
             // Over the backdrop, under the fades into the page.
@@ -238,9 +290,14 @@ final class HeroTrailer {
             MediaPlayer mp = new MediaPlayer();
             player = mp;
             try {
-                if (surface != null) surface.release();
-                surface = new Surface(texture.getSurfaceTexture());
-                mp.setSurface(surface);
+                if (surfaceView != null) {
+                    // The SurfaceView owns its surface: hand it over, never release it here.
+                    mp.setSurface(surfaceView.getHolder().getSurface());
+                } else {
+                    if (surface != null) surface.release();
+                    surface = new Surface(texture.getSurfaceTexture());
+                    mp.setSurface(surface);
+                }
                 mp.setDataSource(url);
                 // Muted unless sound is switched on; then at a moderate level.
                 float v = sound(c) ? 0.6f : 0f;
@@ -248,20 +305,20 @@ final class HeroTrailer {
                 mp.setOnVideoSizeChangedListener((p, w, h) -> crop(w, h));
                 mp.setOnInfoListener((p, what, extra) -> {
                     if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START && gen == generation) {
-                        texture.setAlpha(1f);
+                        videoAlpha(1f);
                         showing(true);
                     }
                     return false;
                 });
                 mp.setOnCompletionListener(p -> {
                     if (gen == generation) {
-                        texture.setAlpha(0f);
+                        videoAlpha(0f);
                         showing(false);
                     }
                 });
                 mp.setOnErrorListener((p, what, extra) -> {
                     if (gen == generation) {
-                        texture.setAlpha(0f);
+                        videoAlpha(0f);
                         showing(false);
                     }
                     return true;
@@ -277,7 +334,10 @@ final class HeroTrailer {
                 android.util.Log.w("TvHomeTrailer", "play: " + e);
             }
         };
-        if (texture.isAvailable()) {
+        if (surfaceView != null) {
+            if (surfaceReady) go.run();
+            else pendingGo = go;
+        } else if (texture.isAvailable()) {
             go.run();
         } else {
             texture.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
@@ -302,9 +362,29 @@ final class HeroTrailer {
         }
     }
 
+    /** Run once the SurfaceView's surface exists (it is created after the view is attached). */
+    private Runnable pendingGo;
+
     /** Fills the hero like the backdrop does (centre crop). */
     private void crop(int vw, int vh) {
-        if (vw <= 0 || vh <= 0 || texture == null) return;
+        if (vw <= 0 || vh <= 0) return;
+        if (surfaceView != null) {
+            // A SurfaceView cannot take a transform: size it to the video's shape, larger than the box where
+            // needed and centred, and let the box clip it.
+            float bw = box.getWidth(), bh = box.getHeight();
+            if (bw <= 0 || bh <= 0) return;
+            float scale = Math.max(bw / vw, bh / vh);
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) surfaceView.getLayoutParams();
+            int w = Math.round(vw * scale), h = Math.round(vh * scale);
+            if (lp.width != w || lp.height != h) {
+                lp.width = w;
+                lp.height = h;
+                lp.gravity = android.view.Gravity.CENTER;
+                surfaceView.setLayoutParams(lp);
+            }
+            return;
+        }
+        if (texture == null) return;
         float w = texture.getWidth(), h = texture.getHeight();
         float scale = Math.max(w / vw, h / vh);
         Matrix m = new Matrix();
