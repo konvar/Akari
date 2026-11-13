@@ -122,7 +122,7 @@ final class ParentalGuide {
         android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
         // Corners as the white focus ring (card_focus, 10dp). A solid dark base with 14% of the accent mixed in,
         // so the text stays readable over any backdrop (a see-through tile was lost over bright pictures).
-        g.setCornerRadius(8 * d);
+        g.setCornerRadius(10 * d);
         int base = 0xFF17181D;
         float t = 0.14f;
         int r = Math.round(((base >> 16) & 0xFF) * (1 - t) + ((accent >> 16) & 0xFF) * t);

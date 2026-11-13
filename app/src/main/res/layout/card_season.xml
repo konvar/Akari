@@ -6,7 +6,7 @@
     android:layout_height="64dp"
     android:layout_marginEnd="12dp"
     android:background="@drawable/glass_tile"
-    android:foreground="@drawable/card_focus"
+    android:foreground="@drawable/card_focus_tile"
     android:focusable="true"
     android:clickable="true">
 

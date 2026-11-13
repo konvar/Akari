@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Focus ring for glass tiles (glass_tile, 20dp corners): the same white ring as card_focus, with corners that
+     follow the tile instead of the posters' 10dp ones. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <stroke android:width="2.5dp" android:color="#FFFFFFFF" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>
